@@ -1,0 +1,113 @@
+/* Variables CSS para personalización rápida */
+:root {
+    --primary-color: #4361ee;
+    --secondary-color: #3f37c9;
+    --bg-color: #f8f9fa;
+    --card-bg: white;
+    --text-color: #212529;
+    --border-radius: 12px;
+    --font-family: 'Segoe UI', system-ui;
+}
+
+/* Tema claro (por defecto) */
+body.light {
+    --bg-color: #f8f9fa;
+    --card-bg: white;
+    --text-color: #212529;
+    --border-color: #dee2e6;
+}
+
+body.dark {
+    --bg-color: #1a1a2e;
+    --card-bg: #16213e;
+    --text-color: #eee;
+    --border-color: #0f3460;
+}
+
+body {
+    background: var(--bg-color);
+    color: var(--text-color);
+    font-family: var(--font-family);
+    margin: 0;
+    padding: 20px;
+    transition: all 0.3s ease;
+}
+
+.container {
+    max-width: 1200px;
+    margin: auto;
+}
+
+.dashboard {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 24px;
+}
+
+@media (max-width: 768px) {
+    .dashboard {
+        grid-template-columns: 1fr;
+    }
+}
+
+.form-section, .requests-section {
+    background: var(--card-bg);
+    padding: 20px;
+    border-radius: var(--border-radius);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+input, select, textarea, button {
+    width: 100%;
+    padding: 10px;
+    margin: 8px 0;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--bg-color);
+    color: var(--text-color);
+}
+
+button {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+button:hover {
+    background: var(--secondary-color);
+}
+
+.request-card {
+    background: var(--card-bg);
+    border-left: 5px solid var(--primary-color);
+    padding: 15px;
+    margin: 12px 0;
+    border-radius: 8px;
+    transition: transform 0.2s;
+}
+
+.request-card:hover {
+    transform: translateX(5px);
+}
+
+.priority-alta { border-left-color: #dc3545; }
+.priority-media { border-left-color: #ffc107; }
+.priority-baja { border-left-color: #28a745; }
+
+.status-select {
+    width: auto;
+    margin-top: 10px;
+}
+
+.filters {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.requests-list {
+    max-height: 500px;
+    overflow-y: auto;
+}

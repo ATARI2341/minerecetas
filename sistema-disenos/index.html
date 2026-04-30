@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Solicitud de Diseños</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Solicitud de Diseños</h1>
+            <div class="theme-selector">
+                <label>Tema:</label>
+                <select id="themeSelect">
+                    <option value="light">Claro</option>
+                    <option value="dark">Oscuro</option>
+                    <option value="custom">Personalizado</option>
+                </select>
+            </div>
+        </header>
+
+        <div class="dashboard">
+            <!-- Formulario de nueva solicitud -->
+            <section class="form-section">
+                <h2>Nueva Solicitud</h2>
+                <form id="designRequestForm">
+                    <input type="text" id="clientName" placeholder="Cliente" required>
+                    <input type="text" id="projectName" placeholder="Proyecto" required>
+                    <select id="designType" required>
+                        <option value="">Tipo de diseño</option>
+                        <option value="logo">Logo</option>
+                        <option value="web">Web</option>
+                        <option value="flyer">Flyer</option>
+                    </select>
+                    <textarea id="description" placeholder="Descripción detallada..." rows="3"></textarea>
+                    <input type="date" id="deliveryDate">
+                    <div class="priority">
+                        <label>Prioridad:</label>
+                        <select id="priority">
+                            <option value="baja">Baja</option>
+                            <option value="media">Media</option>
+                            <option value="alta">Alta</option>
+                        </select>
+                    </div>
+                    <button type="submit">Enviar Solicitud</button>
+                </form>
+            </section>
+
+            <!-- Listado de solicitudes con control -->
+            <section class="requests-section">
+                <h2>Solicitudes <span id="requestCount">(0)</span></h2>
+                <div class="filters">
+                    <input type="text" id="searchInput" placeholder="Buscar...">
+                    <select id="designType" required>
+                    <option value="">Tipo de diseño</option>
+                    <option value="logo">🖌️ Logo</option>
+                    <option value="web">🌐 Sitio Web</option>
+                    <option value="flyer">📄 Flyer</option>
+                    <option value="banner">📊 Banner</option>
+                    <option value="redes">📱 Redes Sociales</option>
+                    <option value="packaging">📦 Packaging</option>
+                </select>
+                </div>
+                <div id="requestsList" class="requests-list"></div>
+            </section>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
