@@ -6,8 +6,90 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Variables globales
 let requests = [];
-let form, requestsList, searchInput, statusFilter, requestCount;
-let currentEditId = null; // Para manejar ediciones
+let designTypes = [];
+let form, requestsList, searchInput, statusFilter, requestCount, deadlineFilter;
+let currentEditId = null;
+
+// Cargar tipos de diseño guardados
+function loadDesignTypes() {
+    const saved = localStorage.getItem('designTypes');
+    if (saved) {
+        designTypes = JSON.parse(saved);
+    } else {
+        // Tipos por defecto
+        designTypes = [
+            { name: 'Logo', icon: '🖌️' },
+            { name: 'Sitio Web', icon: '🌐' },
+            { name: 'Flyer', icon: '📄' },
+            { name: 'Banner', icon: '📊' },
+            { name: 'Redes Sociales', icon: '📱' },
+            { name: 'Packaging', icon: '📦' },
+            { name: 'Ilustración', icon: '✏️' },
+            { name: 'UI/UX', icon: '🎨' }
+        ];
+    }
+    updateDesignTypeSelect();
+}
+
+function updateDesignTypeSelect() {
+    const select = document.getElementById('designType');
+    if (!select) return;
+    
+    select.innerHTML = '<option value="">Seleccionar tipo</option>';
+    designTypes.forEach(type => {
+        const option = document.createElement('option');
+        option.value = type.name;
+        option.textContent = `${type.icon} ${type.name}`;
+        select.appendChild(option);
+    });
+}
+
+function saveDesignTypes() {
+    localStorage.setItem('designTypes', JSON.stringify(designTypes));
+}
+
+function addDesignType(name, icon) {
+    if (!name || name.trim() === '') {
+        showNotification('Por favor ingresa un nombre para el tipo de diseño', 'warning');
+        return false;
+    }
+    
+    if (designTypes.some(t => t.name.toLowerCase() === name.toLowerCase())) {
+        showNotification('Este tipo de diseño ya existe', 'warning');
+        return false;
+    }
+    
+    designTypes.push({ name: name.trim(), icon: icon || '🎨' });
+    saveDesignTypes();
+    updateDesignTypeSelect();
+    showNotification(`Tipo "${name}" agregado exitosamente`, 'success');
+    return true;
+}
+
+// Calcular estado de la fecha límite
+function getDeadlineStatus(deliveryDate) {
+    if (!deliveryDate) return 'normal';
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const deadline = new Date(deliveryDate);
+    deadline.setHours(0, 0, 0, 0);
+    
+    const diffTime = deadline - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) return 'vencido';
+    if (diffDays <= 3) return 'urgente';
+    if (diffDays <= 7) return 'proximo';
+    return 'normal';
+}
+
+function getDeadlineText(days) {
+    if (days < 0) return `Vencido hace ${Math.abs(days)} días`;
+    if (days === 0) return 'Vence hoy';
+    if (days === 1) return 'Vence mañana';
+    return `Vence en ${days} días`;
+}
 
 function init() {
     // Cargar datos desde localStorage
@@ -21,10 +103,26 @@ function init() {
             requests = [];
         }
     } else {
-        // Datos de ejemplo para mostrar que funciona
-        requests = [];
-        console.log('No hay datos guardados');
+        // Datos de ejemplo
+        const today = new Date();
+        requests = [
+            {
+                id: Date.now(),
+                clientName: 'Ejemplo Cliente',
+                projectName: 'Proyecto de prueba',
+                designType: 'Logo',
+                description: 'Este es un ejemplo de solicitud',
+                deliveryDate: new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                priority: 'alta',
+                status: 'pendiente',
+                createdAt: new Date().toISOString()
+            }
+        ];
+        saveToLocalStorage();
     }
+    
+    // Cargar tipos de diseño
+    loadDesignTypes();
     
     // Obtener referencias a elementos DOM
     form = document.getElementById('designRequestForm');
@@ -32,10 +130,7 @@ function init() {
     searchInput = document.getElementById('searchInput');
     statusFilter = document.getElementById('statusFilter');
     requestCount = document.getElementById('requestCount');
-    
-    // Verificar elementos críticos
-    if (!form) console.error('No se encontró el formulario');
-    if (!requestsList) console.error('No se encontró la lista de solicitudes');
+    deadlineFilter = document.getElementById('deadlineFilter');
     
     // Configurar event listeners
     if (form) {
@@ -43,15 +138,33 @@ function init() {
     }
     
     if (searchInput) {
-        searchInput.addEventListener('input', function() {
-            renderRequests();
-        });
+        searchInput.addEventListener('input', () => renderRequests());
     }
     
     if (statusFilter) {
-        statusFilter.addEventListener('change', function() {
-            renderRequests();
+        statusFilter.addEventListener('change', () => renderRequests());
+    }
+    
+    if (deadlineFilter) {
+        deadlineFilter.addEventListener('change', () => renderRequests());
+    }
+    
+    // Botón para agregar tipo de diseño
+    const addTypeBtn = document.getElementById('addDesignTypeBtn');
+    if (addTypeBtn) {
+        addTypeBtn.addEventListener('click', () => {
+            document.getElementById('designTypeModal').style.display = 'block';
         });
+    }
+    
+    // Configurar modal
+    setupModal();
+    
+    // Validar fecha en tiempo real
+    const deliveryDateInput = document.getElementById('deliveryDate');
+    if (deliveryDateInput) {
+        deliveryDateInput.addEventListener('change', validateDate);
+        deliveryDateInput.addEventListener('input', validateDate);
     }
     
     // Renderizar solicitudes
@@ -60,11 +173,74 @@ function init() {
     // Agregar botones de control
     addControlButtons();
     
-    // Inicializar tema si existe
+    // Inicializar tema
     initTheme();
     
     // Agregar estilos dinámicos
     addDynamicStyles();
+}
+
+function validateDate() {
+    const dateInput = document.getElementById('deliveryDate');
+    const warningSpan = document.getElementById('dateWarning');
+    
+    if (!dateInput || !warningSpan) return;
+    
+    const selectedDate = new Date(dateInput.value);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (dateInput.value && selectedDate < today) {
+        warningSpan.innerHTML = '⚠️ La fecha límite ya pasó. Considera una fecha futura.';
+        warningSpan.style.color = '#dc3545';
+        return false;
+    } else if (dateInput.value) {
+        const diffTime = selectedDate - today;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays <= 3) {
+            warningSpan.innerHTML = `⚠️ Fecha límite en ${diffDays} días - ¡Urgente!`;
+            warningSpan.style.color = '#ff6b6b';
+        } else if (diffDays <= 7) {
+            warningSpan.innerHTML = `🟡 Fecha límite en ${diffDays} días - Próxima`;
+            warningSpan.style.color = '#ffc107';
+        } else {
+            warningSpan.innerHTML = `✅ Fecha límite en ${diffDays} días`;
+            warningSpan.style.color = '#28a745';
+        }
+        return true;
+    }
+    return true;
+}
+
+function setupModal() {
+    const modal = document.getElementById('designTypeModal');
+    const closeBtn = document.querySelector('.close');
+    const saveBtn = document.getElementById('saveDesignTypeBtn');
+    
+    if (!modal) return;
+    
+    if (closeBtn) {
+        closeBtn.onclick = () => modal.style.display = 'none';
+    }
+    
+    if (saveBtn) {
+        saveBtn.onclick = () => {
+            const newTypeName = document.getElementById('newDesignType').value;
+            const newTypeIcon = document.getElementById('newDesignTypeIcon').value;
+            
+            if (addDesignType(newTypeName, newTypeIcon)) {
+                modal.style.display = 'none';
+                document.getElementById('newDesignType').value = '';
+            }
+        };
+    }
+    
+    window.onclick = (event) => {
+        if (event.target === modal) {
+            modal.style.display = 'none';
+        }
+    };
 }
 
 function saveToLocalStorage() {
@@ -82,12 +258,13 @@ function saveToLocalStorage() {
 function renderRequests() {
     if (!requestsList) return;
     
-    // Obtener valores de filtros (con manejo de null)
+    // Obtener valores de filtros
     const searchTerm = (searchInput && searchInput.value) ? searchInput.value.toLowerCase() : '';
     const filterStatus = (statusFilter && statusFilter.value) ? statusFilter.value : 'todas';
+    const filterDeadline = (deadlineFilter && deadlineFilter.value) ? deadlineFilter.value : 'todas';
     
     // Filtrar solicitudes
-    let filtered = requests;
+    let filtered = [...requests];
     
     if (searchTerm) {
         filtered = filtered.filter(req => {
@@ -101,6 +278,20 @@ function renderRequests() {
     if (filterStatus !== 'todas') {
         filtered = filtered.filter(req => req.status === filterStatus);
     }
+    
+    if (filterDeadline !== 'todas') {
+        filtered = filtered.filter(req => {
+            const status = getDeadlineStatus(req.deliveryDate);
+            return status === filterDeadline;
+        });
+    }
+    
+    // Ordenar por fecha límite (las más urgentes primero)
+    filtered.sort((a, b) => {
+        const dateA = a.deliveryDate ? new Date(a.deliveryDate) : new Date(8640000000000000);
+        const dateB = b.deliveryDate ? new Date(b.deliveryDate) : new Date(8640000000000000);
+        return dateA - dateB;
+    });
     
     // Actualizar contador
     if (requestCount) {
@@ -119,29 +310,41 @@ function renderRequests() {
     }
     
     // Renderizar tarjetas
-    requestsList.innerHTML = filtered.map(req => `
-        <div class="request-card priority-${req.priority || 'media'}" data-id="${req.id}">
-            <div class="card-header">
-                <strong>📌 ${escapeHtml(req.projectName || 'Sin nombre')}</strong>
-                <span class="client-name">👤 ${escapeHtml(req.clientName || 'Sin cliente')}</span>
+    requestsList.innerHTML = filtered.map(req => {
+        const deadlineStatus = getDeadlineStatus(req.deliveryDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const deadline = req.deliveryDate ? new Date(req.deliveryDate) : null;
+        const diffDays = deadline ? Math.ceil((deadline - today) / (1000 * 60 * 60 * 24)) : null;
+        
+        const designTypeObj = designTypes.find(t => t.name === req.designType);
+        const typeIcon = designTypeObj ? designTypeObj.icon : '🎨';
+        
+        return `
+            <div class="request-card priority-${req.priority || 'media'} deadline-${deadlineStatus}" data-id="${req.id}">
+                <div class="card-header">
+                    <strong>📌 ${escapeHtml(req.projectName || 'Sin nombre')}</strong>
+                    <span class="client-name">👤 ${escapeHtml(req.clientName || 'Sin cliente')}</span>
+                </div>
+                <div class="card-details">
+                    <small>🎨 Tipo: ${typeIcon} ${escapeHtml(req.designType || 'No especificado')}</small>
+                    <small>📅 Fecha límite: ${req.deliveryDate ? new Date(req.deliveryDate).toLocaleDateString() : 'No definida'}</small>
+                    ${deadline && diffDays !== null ? `<span class="deadline-badge ${deadlineStatus}">${getDeadlineText(diffDays)}</span>` : ''}
+                    <small>🕒 Creado: ${req.createdAt ? new Date(req.createdAt).toLocaleDateString() : 'Fecha desconocida'}</small>
+                </div>
+                <p class="description">📝 ${escapeHtml((req.description || '').substring(0, 150))}${(req.description || '').length > 150 ? '...' : ''}</p>
+                <div class="card-actions">
+                    <select class="status-select" data-id="${req.id}">
+                        <option value="pendiente" ${req.status === 'pendiente' ? 'selected' : ''}>📋 Pendiente</option>
+                        <option value="enproceso" ${req.status === 'enproceso' ? 'selected' : ''}>🔄 En proceso</option>
+                        <option value="completado" ${req.status === 'completado' ? 'selected' : ''}>✅ Completado</option>
+                    </select>
+                    <button class="edit-btn" data-id="${req.id}">✏️ Editar</button>
+                    <button class="delete-btn" data-id="${req.id}">🗑 Eliminar</button>
+                </div>
             </div>
-            <div class="card-details">
-                <small>🎨 Tipo: ${getDesignTypeIcon(req.designType)} ${escapeHtml(req.designType || 'No especificado')}</small>
-                <small>📅 Entrega: ${req.deliveryDate || 'No definida'}</small>
-                <small>🕒 Creado: ${req.createdAt ? new Date(req.createdAt).toLocaleDateString() : 'Fecha desconocida'}</small>
-            </div>
-            <p class="description">📝 ${escapeHtml((req.description || '').substring(0, 150))}${(req.description || '').length > 150 ? '...' : ''}</p>
-            <div class="card-actions">
-                <select class="status-select" data-id="${req.id}">
-                    <option value="pendiente" ${req.status === 'pendiente' ? 'selected' : ''}>📋 Pendiente</option>
-                    <option value="enproceso" ${req.status === 'enproceso' ? 'selected' : ''}>🔄 En proceso</option>
-                    <option value="completado" ${req.status === 'completado' ? 'selected' : ''}>✅ Completado</option>
-                </select>
-                <button class="edit-btn" data-id="${req.id}">✏️ Editar</button>
-                <button class="delete-btn" data-id="${req.id}">🗑 Eliminar</button>
-            </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
     
     // Agregar event listeners a los elementos dinámicos
     attachDynamicEvents();
@@ -198,18 +401,6 @@ function escapeHtml(str) {
         .replace(/'/g, '&#39;');
 }
 
-function getDesignTypeIcon(type) {
-    const icons = {
-        'logo': '🖌️',
-        'web': '🌐',
-        'flyer': '📄',
-        'banner': '📊',
-        'redes': '📱',
-        'packaging': '📦'
-    };
-    return icons[type] || '🎨';
-}
-
 function editRequest(id) {
     const request = requests.find(r => r.id === id);
     if (!request) return;
@@ -217,31 +408,25 @@ function editRequest(id) {
     currentEditId = id;
     
     // Llenar el formulario con los datos
-    const clientNameInput = document.getElementById('clientName');
-    const projectNameInput = document.getElementById('projectName');
-    const designTypeSelect = document.getElementById('designType');
-    const descriptionTextarea = document.getElementById('description');
-    const deliveryDateInput = document.getElementById('deliveryDate');
-    const prioritySelect = document.getElementById('priority');
+    document.getElementById('clientName').value = request.clientName || '';
+    document.getElementById('projectName').value = request.projectName || '';
+    document.getElementById('designType').value = request.designType || '';
+    document.getElementById('description').value = request.description || '';
+    document.getElementById('deliveryDate').value = request.deliveryDate || '';
+    document.getElementById('priority').value = request.priority || 'media';
     
-    if (clientNameInput) clientNameInput.value = request.clientName || '';
-    if (projectNameInput) projectNameInput.value = request.projectName || '';
-    if (designTypeSelect) designTypeSelect.value = request.designType || '';
-    if (descriptionTextarea) descriptionTextarea.value = request.description || '';
-    if (deliveryDateInput) deliveryDateInput.value = request.deliveryDate || '';
-    if (prioritySelect) prioritySelect.value = request.priority || 'media';
+    // Validar la fecha
+    validateDate();
     
     // Cambiar el texto del botón
-    const submitBtn = form ? form.querySelector('button[type="submit"]') : null;
+    const submitBtn = form.querySelector('button[type="submit"]');
     if (submitBtn) {
         submitBtn.textContent = '✏️ Actualizar Solicitud';
         submitBtn.style.backgroundColor = '#ffc107';
     }
     
     // Scroll al formulario
-    if (form) {
-        form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
     
     showNotification('Editando solicitud - Modifica los campos y actualiza', 'info');
 }
@@ -250,41 +435,56 @@ function handleSubmit(e) {
     e.preventDefault();
     
     // Obtener valores del formulario
-    const clientNameInput = document.getElementById('clientName');
-    const projectNameInput = document.getElementById('projectName');
-    const designTypeSelect = document.getElementById('designType');
-    const descriptionTextarea = document.getElementById('description');
-    const deliveryDateInput = document.getElementById('deliveryDate');
-    const prioritySelect = document.getElementById('priority');
+    const clientName = document.getElementById('clientName').value.trim();
+    const projectName = document.getElementById('projectName').value.trim();
+    const designType = document.getElementById('designType').value;
+    const description = document.getElementById('description').value.trim();
+    const deliveryDate = document.getElementById('deliveryDate').value;
+    const priority = document.getElementById('priority').value;
     
     // Validar campos requeridos
-    if (!clientNameInput || !clientNameInput.value.trim()) {
+    if (!clientName) {
         showNotification('Por favor ingresa el nombre del cliente', 'warning');
         return;
     }
     
-    if (!projectNameInput || !projectNameInput.value.trim()) {
+    if (!projectName) {
         showNotification('Por favor ingresa el nombre del proyecto', 'warning');
         return;
     }
     
-    if (!designTypeSelect || !designTypeSelect.value) {
+    if (!designType) {
         showNotification('Por favor selecciona el tipo de diseño', 'warning');
         return;
     }
     
+    if (!deliveryDate) {
+        showNotification('Por favor selecciona la fecha límite', 'warning');
+        return;
+    }
+    
+    // Validar que la fecha no sea pasada
+    const selectedDate = new Date(deliveryDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (selectedDate < today) {
+        showNotification('⚠️ La fecha límite no puede ser anterior a hoy', 'warning');
+        return;
+    }
+    
     if (currentEditId) {
-        // Modo edición - actualizar solicitud existente
+        // Modo edición
         const requestIndex = requests.findIndex(r => r.id === currentEditId);
         if (requestIndex !== -1) {
             requests[requestIndex] = {
                 ...requests[requestIndex],
-                clientName: clientNameInput.value.trim(),
-                projectName: projectNameInput.value.trim(),
-                designType: designTypeSelect.value,
-                description: descriptionTextarea ? descriptionTextarea.value.trim() : '',
-                deliveryDate: deliveryDateInput ? deliveryDateInput.value : '',
-                priority: prioritySelect ? prioritySelect.value : 'media',
+                clientName,
+                projectName,
+                designType,
+                description,
+                deliveryDate,
+                priority,
                 updatedAt: new Date().toISOString()
             };
             saveToLocalStorage();
@@ -300,15 +500,15 @@ function handleSubmit(e) {
             }
         }
     } else {
-        // Modo crear - nueva solicitud
+        // Modo crear
         const newRequest = {
             id: Date.now(),
-            clientName: clientNameInput.value.trim(),
-            projectName: projectNameInput.value.trim(),
-            designType: designTypeSelect.value,
-            description: descriptionTextarea ? descriptionTextarea.value.trim() : '',
-            deliveryDate: deliveryDateInput ? deliveryDateInput.value : '',
-            priority: prioritySelect ? prioritySelect.value : 'media',
+            clientName,
+            projectName,
+            designType,
+            description,
+            deliveryDate,
+            priority,
             status: 'pendiente',
             createdAt: new Date().toISOString()
         };
@@ -320,11 +520,12 @@ function handleSubmit(e) {
     }
     
     // Resetear formulario
-    if (form) form.reset();
+    form.reset();
+    const warningSpan = document.getElementById('dateWarning');
+    if (warningSpan) warningSpan.innerHTML = '';
 }
 
 function showNotification(message, type = 'info') {
-    // Eliminar notificaciones anteriores
     const oldNotifications = document.querySelectorAll('.notification');
     oldNotifications.forEach(n => n.remove());
     
@@ -372,7 +573,8 @@ function exportToJSON() {
     const exportData = {
         exportDate: new Date().toISOString(),
         totalRequests: requests.length,
-        requests: requests
+        requests: requests,
+        designTypes: designTypes
     };
     
     const jsonString = JSON.stringify(exportData, null, 2);
@@ -397,11 +599,15 @@ function importFromJSON(file) {
         try {
             const importedData = JSON.parse(e.target.result);
             let importedRequests = [];
+            let importedTypes = null;
             
             if (Array.isArray(importedData)) {
                 importedRequests = importedData;
             } else if (importedData.requests && Array.isArray(importedData.requests)) {
                 importedRequests = importedData.requests;
+                if (importedData.designTypes && Array.isArray(importedData.designTypes)) {
+                    importedTypes = importedData.designTypes;
+                }
             } else {
                 throw new Error('Formato de archivo no válido');
             }
@@ -428,6 +634,11 @@ function importFromJSON(file) {
             } else {
                 if (confirm(`¿Reemplazar TODAS las ${requests.length} solicitudes actuales?`)) {
                     requests = newRequests;
+                    if (importedTypes) {
+                        designTypes = importedTypes;
+                        saveDesignTypes();
+                        updateDesignTypeSelect();
+                    }
                     showNotification(`Datos reemplazados con ${newRequests.length} solicitudes`, 'success');
                 } else {
                     showNotification('Importación cancelada', 'info');
@@ -458,12 +669,21 @@ function showStats() {
     const completed = requests.filter(r => r.status === 'completado').length;
     const highPriority = requests.filter(r => r.priority === 'alta').length;
     
+    // Estadísticas de fechas
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const urgent = requests.filter(r => getDeadlineStatus(r.deliveryDate) === 'urgente').length;
+    const overdue = requests.filter(r => getDeadlineStatus(r.deliveryDate) === 'vencido').length;
+    
     alert(`📊 ESTADÍSTICAS DEL SISTEMA\n\n` +
           `📋 Total solicitudes: ${total}\n` +
           `⏳ Pendientes: ${pending}\n` +
           `🔄 En proceso: ${inProgress}\n` +
           `✅ Completadas: ${completed}\n` +
           `🚨 Prioridad alta: ${highPriority}\n` +
+          `⚠️ Urgentes (≤3 días): ${urgent}\n` +
+          `🔴 Vencidas: ${overdue}\n` +
+          `🎨 Tipos de diseño: ${designTypes.length}\n` +
           `💾 Almacenamiento: ${Math.ceil(JSON.stringify(requests).length / 1024)} KB`);
 }
 
@@ -482,7 +702,6 @@ function addControlButtons() {
     const container = document.querySelector('.requests-section');
     if (!container) return;
     
-    // Verificar si ya existen los botones
     if (document.querySelector('.control-buttons')) return;
     
     const buttonBar = document.createElement('div');
@@ -495,7 +714,6 @@ function addControlButtons() {
         <input type="file" id="importFileInput" accept=".json" style="display: none">
     `;
     
-    // Insertar después del título
     const title = container.querySelector('h2');
     if (title && title.nextSibling) {
         container.insertBefore(buttonBar, title.nextSibling);
@@ -503,35 +721,24 @@ function addControlButtons() {
         container.insertBefore(buttonBar, container.firstChild);
     }
     
-    // Agregar event listeners
-    const exportBtn = document.getElementById('exportBtn');
-    const importBtn = document.getElementById('importBtn');
-    const statsBtn = document.getElementById('statsBtn');
-    const clearBtn = document.getElementById('clearBtn');
-    const importFileInput = document.getElementById('importFileInput');
-    
-    if (exportBtn) exportBtn.addEventListener('click', exportToJSON);
-    if (importBtn) importBtn.addEventListener('click', () => {
-        if (importFileInput) importFileInput.click();
+    document.getElementById('exportBtn').addEventListener('click', exportToJSON);
+    document.getElementById('importBtn').addEventListener('click', () => {
+        document.getElementById('importFileInput').click();
     });
-    if (statsBtn) statsBtn.addEventListener('click', showStats);
-    if (clearBtn) clearBtn.addEventListener('click', clearAllData);
-    if (importFileInput) {
-        importFileInput.addEventListener('change', (e) => {
-            if (e.target.files && e.target.files.length > 0) {
-                importFromJSON(e.target.files[0]);
-                e.target.value = '';
-            }
-        });
-    }
+    document.getElementById('statsBtn').addEventListener('click', showStats);
+    document.getElementById('clearBtn').addEventListener('click', clearAllData);
+    document.getElementById('importFileInput').addEventListener('change', (e) => {
+        if (e.target.files && e.target.files.length > 0) {
+            importFromJSON(e.target.files[0]);
+            e.target.value = '';
+        }
+    });
 }
 
 function initTheme() {
-    // Verificar si existe la configuración de temas
     const themeSelect = document.getElementById('themeSelect');
     if (!themeSelect) return;
     
-    // Cargar tema guardado
     const savedTheme = localStorage.getItem('selectedTheme');
     if (savedTheme) {
         applyTheme(savedTheme);
@@ -589,119 +796,11 @@ function addDynamicStyles() {
             from { transform: translateX(0); opacity: 1; }
             to { transform: translateX(100%); opacity: 0; }
         }
-        .control-buttons {
-            display: flex;
-            gap: 10px;
-            margin: 20px 0;
-            flex-wrap: wrap;
-        }
-        .control-btn {
-            flex: 1;
-            padding: 10px 15px;
-            font-weight: bold;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 14px;
-        }
-        .control-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-        }
-        .control-btn.export { background: #28a745; color: white; }
-        .control-btn.import { background: #17a2b8; color: white; }
-        .control-btn.stats { background: #6c757d; color: white; }
-        .control-btn.clear { background: #dc3545; color: white; }
-        .request-card {
-            background: var(--card-bg);
-            border-left: 5px solid #4361ee;
-            padding: 15px;
-            margin: 12px 0;
-            border-radius: 8px;
-            transition: transform 0.2s, box-shadow 0.2s;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .request-card:hover {
-            transform: translateX(5px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-        }
-        .priority-alta { border-left-color: #dc3545; }
-        .priority-media { border-left-color: #ffc107; }
-        .priority-baja { border-left-color: #28a745; }
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
-            flex-wrap: wrap;
-        }
-        .card-details {
-            display: flex;
-            gap: 15px;
-            margin: 8px 0;
-            flex-wrap: wrap;
-        }
-        .description {
-            background: var(--bg-color);
-            padding: 10px;
-            border-radius: 6px;
-            margin: 10px 0;
-            font-size: 14px;
-        }
-        .card-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-        }
-        .edit-btn {
-            background: #ffc107;
-            color: #333;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .edit-btn:hover { background: #e0a800; }
-        .delete-btn {
-            background: #dc3545;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .delete-btn:hover { background: #c82333; }
-        .status-select {
-            flex: 1;
-            padding: 5px;
-            border-radius: 5px;
-            background: var(--bg-color);
-            color: var(--text-color);
-            border: 1px solid var(--border-color);
-        }
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: var(--text-color);
-            opacity: 0.7;
-        }
-        .filters {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-        .filters input,
-        .filters select {
-            flex: 1;
-            padding: 10px;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            background: var(--bg-color);
-            color: var(--text-color);
-        }
     `;
     document.head.appendChild(style);
 }
+
+// Actualizar colores automáticamente cada hora
+setInterval(() => {
+    renderRequests();
+}, 3600000);

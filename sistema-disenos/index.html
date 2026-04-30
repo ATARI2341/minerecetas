@@ -9,13 +9,13 @@
 <body>
     <div class="container">
         <header>
-            <h1>Solicitud de Diseños</h1>
+            <h1>🎨 Sistema de Solicitud de Diseños</h1>
             <div class="theme-selector">
                 <label>Tema:</label>
                 <select id="themeSelect">
-                    <option value="light">Claro</option>
-                    <option value="dark">Oscuro</option>
-                    <option value="custom">Personalizado</option>
+                    <option value="light">☀️ Claro</option>
+                    <option value="dark">🌙 Oscuro</option>
+                    <option value="custom">🎨 Personalizado</option>
                 </select>
             </div>
         </header>
@@ -23,47 +23,80 @@
         <div class="dashboard">
             <!-- Formulario de nueva solicitud -->
             <section class="form-section">
-                <h2>Nueva Solicitud</h2>
+                <h2>📝 Nueva Solicitud</h2>
                 <form id="designRequestForm">
                     <input type="text" id="clientName" placeholder="Cliente" required>
                     <input type="text" id="projectName" placeholder="Proyecto" required>
-                    <select id="designType" required>
-                        <option value="">Tipo de diseño</option>
-                        <option value="logo">Logo</option>
-                        <option value="web">Web</option>
-                        <option value="flyer">Flyer</option>
-                    </select>
+                    
+                    <div class="design-type-group">
+                        <label for="designType">Tipo de diseño:</label>
+                        <select id="designType" required>
+                            <option value="">Seleccionar tipo</option>
+                        </select>
+                        <button type="button" id="addDesignTypeBtn" class="small-btn">➕ Agregar tipo</button>
+                    </div>
+                    
                     <textarea id="description" placeholder="Descripción detallada..." rows="3"></textarea>
-                    <input type="date" id="deliveryDate">
+                    
+                    <div class="date-group">
+                        <label for="deliveryDate">📅 Fecha límite de entrega:</label>
+                        <input type="date" id="deliveryDate" required>
+                        <small id="dateWarning" class="date-warning"></small>
+                    </div>
+                    
                     <div class="priority">
                         <label>Prioridad:</label>
                         <select id="priority">
-                            <option value="baja">Baja</option>
-                            <option value="media">Media</option>
-                            <option value="alta">Alta</option>
+                            <option value="baja">🟢 Baja</option>
+                            <option value="media">🟡 Media</option>
+                            <option value="alta">🔴 Alta</option>
                         </select>
                     </div>
-                    <button type="submit">Enviar Solicitud</button>
+                    <button type="submit">📤 Enviar Solicitud</button>
                 </form>
             </section>
 
             <!-- Listado de solicitudes con control -->
             <section class="requests-section">
-                <h2>Solicitudes <span id="requestCount">(0)</span></h2>
+                <h2>📋 Solicitudes <span id="requestCount">(0)</span></h2>
                 <div class="filters">
-                    <input type="text" id="searchInput" placeholder="Buscar...">
-                    <select id="designType" required>
-                    <option value="">Tipo de diseño</option>
-                    <option value="logo">🖌️ Logo</option>
-                    <option value="web">🌐 Sitio Web</option>
-                    <option value="flyer">📄 Flyer</option>
-                    <option value="banner">📊 Banner</option>
-                    <option value="redes">📱 Redes Sociales</option>
-                    <option value="packaging">📦 Packaging</option>
-                </select>
+                    <input type="text" id="searchInput" placeholder="🔍 Buscar...">
+                    <select id="statusFilter">
+                        <option value="todas">📌 Todas</option>
+                        <option value="pendiente">⏳ Pendiente</option>
+                        <option value="enproceso">🔄 En proceso</option>
+                        <option value="completado">✅ Completado</option>
+                    </select>
+                    <select id="deadlineFilter">
+                        <option value="todas">📅 Todas las fechas</option>
+                        <option value="urgente">⚠️ Urgentes (menos de 3 días)</option>
+                        <option value="proximo">🟡 Próximas (3-7 días)</option>
+                        <option value="normal">🟢 Normal (más de 7 días)</option>
+                        <option value="vencidas">🔴 Vencidas</option>
+                    </select>
                 </div>
                 <div id="requestsList" class="requests-list"></div>
             </section>
+        </div>
+    </div>
+
+    <!-- Modal para agregar nuevo tipo de diseño -->
+    <div id="designTypeModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3>Agregar nuevo tipo de diseño</h3>
+            <input type="text" id="newDesignType" placeholder="Ej: Ilustración, UI/UX, 3D..." autocomplete="off">
+            <select id="newDesignTypeIcon">
+                <option value="🎨">🎨 Arte</option>
+                <option value="🖌️">🖌️ Ilustración</option>
+                <option value="📱">📱 App</option>
+                <option value="💻">💻 Web</option>
+                <option value="📊">📊 Infografía</option>
+                <option value="🎬">🎬 Video</option>
+                <option value="📦">📦 3D</option>
+                <option value="✏️">✏️ Dibujo</option>
+            </select>
+            <button id="saveDesignTypeBtn">Guardar tipo</button>
         </div>
     </div>
 
