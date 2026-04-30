@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Minecraft Crafting · Dos Cuadrículas · Editor Visual con Emojis</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #1a4d2a 0%, #0d2818 100%);
+            min-height: 100vh;
+            padding: 1.5rem;
+            color: #f0f0f0;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: rgba(30, 20, 15, 0.5);
+            backdrop-filter: blur(4px);
+            border-radius: 2rem;
+            padding: 1.8rem;
+            border: 1px solid rgba(255, 215, 140, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.3rem;
+            background: linear-gradient(135deg, #ffd966, #ffb347);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            text-align: center;
+            margin-bottom: 2rem;
+            font-size: 0.9rem;
+            color: #d4d4bc;
+        }
+
+        /* Layout principal: dos columnas */
+        .double-crafting {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2rem;
+            justify-content: center;
+        }
+
+        /* Cada panel */
+        .craft-panel {
+            flex: 1;
+            min-width: 380px;
+            background: #2b241cee;
+            backdrop-filter: blur(8px);
+            border-radius: 1.8rem;
+            padding: 1.2rem;
+            border: 1px solid #ffdca866;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .panel-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: #1e1914aa;
+            padding: 0.5rem;
+            border-radius: 60px;
+        }
+
+        .crafting-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            background: #3e2a1c;
+            padding: 20px;
+            border-radius: 28px;
+            box-shadow: inset 0 0 0 2px #f9e0a0, inset 0 0 0 5px #836c44, 0 8px 18px black;
+            margin-bottom: 1rem;
+        }
+
+        .slot {
+            aspect-ratio: 1 / 1;
+            background: #2f2419;
+            background-image: linear-gradient(145deg, #3c2d1f 0%, #231b10 100%);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            border: 1px solid #c9a86b;
+            font-size: 2.3rem;
+            font-weight: normal;
+            text-shadow: 2px 2px 2px black;
+        }
+
+        .slot.drag-over {
+            transform: scale(1.05);
+            box-shadow: 0 0 0 3px #ffdf99;
+            background: #5e452a;
+        }
+
+        .slot span {
+            filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.5));
+        }
+
+        .result-area {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            background: #2d241a80;
+            padding: 0.8rem;
+            border-radius: 60px;
+            margin-top: 0.5rem;
+        }
+
+        .result-box {
+            background: #2b2118;
+            border-radius: 20px;
+            padding: 0.5rem 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            border: 1px solid #e5bc7c;
+            min-width: 100px;
+        }
+
+        .result-emoji {
+            font-size: 2.2rem;
+        }
+
+        .result-name {
+            font-weight: 600;
+            background: #00000099;
+            padding: 0.2rem 0.6rem;
+            border-radius: 50px;
+            font-size: 0.75rem;
+        }
+
+        /* Barra de botones */
+        .action-bar {
+            display: flex;
+            gap: 10px;
+            margin: 12px 0;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            border: none;
+            padding: 8px 16px;
+            border-radius: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-family: inherit;
+            transition: 0.2s;
+        }
+
+        .btn-primary { background: #5e7c3c; color: white; }
+        .btn-primary:hover { background: #7fa34b; transform: scale(0.98); }
+        .btn-warning { background: #6d3f2c; color: white; }
+        .btn-warning:hover { background: #8f553a; }
+        .btn-info { background: #2c6e6e; color: white; }
+        .btn-info:hover { background: #3e8e8e; }
+
+        /* Inventario de items */
+        .items-inventory {
+            background: #1e1914cc;
+            border-radius: 1.5rem;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .items-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .items-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 10px;
+            max-height: 280px;
+            overflow-y: auto;
+            padding: 5px;
+        }
+
+        .drag-item {
+            background: #2f281f;
+            border-radius: 16px;
+            padding: 8px 4px;
+            text-align: center;
+            cursor: grab;
+            transition: 0.1s;
+            border: 1px solid #776b54;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+        .drag-item:active { cursor: grabbing; }
+        .drag-item:hover { background: #4a3826; transform: scale(1.02); border-color: #ffcd7e; }
+        .drag-item .item-emoji { font-size: 2rem; }
+        .drag-item span { font-size: 0.7rem; font-weight: 500; }
+
+        /* Diccionario de emojis */
+        .dictionary {
+            background: #1a1510cc;
+            border-radius: 1.2rem;
+            padding: 0.8rem;
+            margin-top: 1.5rem;
+            font-size: 0.7rem;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .dict-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #ffd966;
+        }
+        .dict-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .dict-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #2c241c;
+            padding: 4px 10px;
+            border-radius: 30px;
+        }
+        footer { text-align: center; margin-top: 1.5rem; font-size: 0.75rem; color: #cbae86; }
+
+        @media (max-width: 850px) {
+            .slot { font-size: 1.5rem; }
+            .drag-item .item-emoji { font-size: 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1><i class="fas fa-crafting"></i> Mesa de Crafting · Dos Cuadrículas</h1>
+    <div class="subtitle">✨ Cuadrícula IZQUIERDA: Visualiza recetas guardadas · Cuadrícula DERECHA: Arrastra y crea tus propias recetas</div>
+
+    <div class="double-crafting">
+        <!-- PANEL IZQUIERDO: VISUALIZAR RECETAS (solo lectura / selector) -->
+        <div class="craft-panel">
+            <div class="panel-title"><i class="fas fa-eye"></i> Visualizador de Recetas</div>
+            <div class="crafting-grid" id="viewerGrid">
+                <!-- slots generados dinámicamente -->
+            </div>
+            <div class="result-area">
+                <div class="result-box" id="viewerResult">
+                    <div class="result-emoji" id="viewerEmoji">⬚</div>
+                    <span class="result-name" id="viewerName">Selecciona receta</span>
+                </div>
+            </div>
+            <div class="action-bar">
+                <select id="recipeSelector" style="background:#2f281f; color:white; border-radius:40px; padding:8px; border:1px solid #bc9a60; flex:1;">
+                    <option>Cargando recetas...</option>
+                </select>
+                <button id="loadRecipeBtn" class="btn btn-info"><i class="fas fa-sync-alt"></i> Cargar</button>
+            </div>
+            <div class="items-inventory">
+                <div class="items-title"><i class="fas fa-database"></i> Recetas guardadas (click para cargar)</div>
+                <div id="recipesQuickList" style="display:flex; flex-wrap:wrap; gap:6px; max-height:120px; overflow-y:auto;"></div>
+            </div>
+        </div>
+
+        <!-- PANEL DERECHO: CREAR / EDITAR RECETA (drag & drop) -->
+        <div class="craft-panel">
+            <div class="panel-title"><i class="fas fa-hand-pointer"></i> Editor · Arrastra items</div>
+            <div class="crafting-grid" id="editorGrid"></div>
+            <div class="result-area">
+                <div class="result-box" id="editorResult">
+                    <div class="result-emoji" id="editorEmoji">⬚</div>
+                    <span class="result-name" id="editorName">Sin coincidencia</span>
+                </div>
+            </div>
+            <div class="action-bar">
+                <input type="text" id="newRecipeName" placeholder="Nombre receta" style="background:#2f281f; border:1px solid #bc9a60; border-radius:40px; padding:8px; color:white; flex:1;">
+                <input type="text" id="newResultName" placeholder="Resultado visible" style="background:#2f281f; border:1px solid #bc9a60; border-radius:40px; padding:8px; color:white; flex:1;">
+                <button id="saveRecipeBtn" class="btn btn-primary"><i class="fas fa-save"></i> Guardar</button>
+            </div>
+            <div class="action-bar">
+                <button id="clearEditorBtn" class="btn btn-warning"><i class="fas fa-eraser"></i> Limpiar editor</button>
+                <button id="exportRecipesBtn" class="btn btn-info"><i class="fas fa-download"></i> Exportar JSON</button>
+                <label for="importInput" class="btn btn-info" style="cursor:pointer;"><i class="fas fa-upload"></i> Importar</label>
+                <input type="file" id="importInput" accept=".json" style="display:none;">
+            </div>
+
+            <!-- Inventario de items (arrastrables) -->
+            <div class="items-inventory">
+                <div class="items-title"><i class="fas fa-box"></i> 🧱 Inventario de Items (arrastra a la cuadrícula derecha)</div>
+                <div class="items-grid" id="itemsGrid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DICCIONARIO DE EMOJIS (todos los objetos del juego) -->
+    <div class="dictionary">
+        <div class="dict-title"><i class="fas fa-book"></i> 📖 Diccionario de Items Minecraft → Emojis (equivalencia visual)</div>
+        <div class="dict-grid" id="dictionaryGrid"></div>
+    </div>
+    <footer><i class="fas fa-arrows-alt"></i> Arrastra cualquier item a la cuadrícula DERECHA para crear recetas. Las recetas se guardan automáticamente en tu navegador.</footer>
+</div>
+
+<script>
+    // --------------------------------------------------------------
+    // 1. DICCIONARIO COMPLETO DE ITEMS (Minecraft -> Emoji + color)
+    // --------------------------------------------------------------
+    const ITEM_DICT = {
+        "tablones_madera": { emoji: "🪵", name: "Tablones de Madera", color: "#BA8C63" },
+        "palo": { emoji: "🌿", name: "Palo", color: "#8B5A2B" },
+        "piedra": { emoji: "🪨", name: "Piedra", color: "#7B7B7B" },
+        "lingote_hierro": { emoji: "⚙️", name: "Lingote de Hierro", color: "#C0C0C0" },
+        "diamante": { emoji: "💎", name: "Diamante", color: "#2EE0D0" },
+        "carbón": { emoji: "⬛", name: "Carbón", color: "#3A3A3A" },
+        "lingote_oro": { emoji: "🌟", name: "Lingote de Oro", color: "#FFD700" },
+        "manzana": { emoji: "🍎", name: "Manzana", color: "#E34234" },
+        "lana": { emoji: "🧶", name: "Lana", color: "#C98BDB" },
+        "cana_de_azucar": { emoji: "🎋", name: "Caña de Azúcar", color: "#6B8E23" },
+        "papel": { emoji: "📄", name: "Papel", color: "#F5F5DC" },
+        "perla_ender": { emoji: "✨", name: "Perla de Ender", color: "#C0C0FF" },
+        "redstone": { emoji: "🔴", name: "Redstone", color: "#D32F2F" },
+        "lapislázuli": { emoji: "🔵", name: "Lapislázuli", color: "#3F51B5" },
+        "cuarzo": { emoji: "◻️", name: "Cuarzo", color: "#E0E0E0" },
+        "obsidiana": { emoji: "🟣", name: "Obsidiana", color: "#4A148C" },
+        "hueso": { emoji: "🦴", name: "Hueso", color: "#D7CCC8" },
+        "arena": { emoji: "🏜️", name: "Arena", color: "#F4D03F" },
+        "vidrio": { emoji: "🔲", name: "Vidrio", color: "#B0BEC5" },
+        "hierro_bruto": { emoji: "⛓️", name: "Hierro Bruto", color: "#9E9E9E" },
+        "oro_bruto": { emoji: "🏅", name: "Oro Bruto", color: "#FFC107" },
+        "diamante_bruto": { emoji: "💠", name: "Diamante Bruto", color: "#80D8FF" }
+    };
+
+    // Items base para arrastrar
+    const BASE_ITEMS = Object.keys(ITEM_DICT);
+
+    // Emoji helper
+    function getEmoji(itemId) { return ITEM_DICT[itemId]?.emoji || "📦"; }
+    function getItemName(itemId) { return ITEM_DICT[itemId]?.name || itemId; }
+
+    // --------------------------------------------------------------
+    // 2. RECETAS PREGENERADAS (20+ recetas clásicas con nombres)
+    // --------------------------------------------------------------
+    const BASE_RECIPES = [
+        { name: "Pico de Madera", resultName: "Pico de Madera", pattern: ["PPP"," S "," S "], keys: { P: "tablones_madera", S: "palo" } },
+        { name: "Hacha de Madera", resultName: "Hacha de Madera", pattern: ["PP ","PS "," S "], keys: { P: "tablones_madera", S: "palo" } },
+        { name: "Espada de Madera", resultName: "Espada de Madera", pattern: ["P","P","S"], keys: { P: "tablones_madera", S: "palo" } },
+        { name: "Pico de Piedra", resultName: "Pico de Piedra", pattern: ["PPP"," S "," S "], keys: { P: "piedra", S: "palo" } },
+        { name: "Espada de Piedra", resultName: "Espada de Piedra", pattern: ["P","P","S"], keys: { P: "piedra", S: "palo" } },
+        { name: "Pico de Hierro", resultName: "Pico de Hierro", pattern: ["III"," S "," S "], keys: { I: "lingote_hierro", S: "palo" } },
+        { name: "Espada de Diamante", resultName: "Espada de Diamante", pattern: ["D","D","S"], keys: { D: "diamante", S: "palo" } },
+        { name: "Mesa de Crafting", resultName: "Mesa de Crafting", pattern: ["PP","PP","  "], keys: { P: "tablones_madera" } },
+        { name: "Horno", resultName: "Horno", pattern: ["CCC","C C","CCC"], keys: { C: "piedra" } },
+        { name: "Cofre", resultName: "Cofre", pattern: ["PPP","P P","PPP"], keys: { P: "tablones_madera" } },
+        { name: "Antorcha", resultName: "Antorcha", pattern: ["C","S"," "], keys: { C: "carbón", S: "palo" } },
+        { name: "Manzana Dorada", resultName: "Manzana Dorada", pattern: ["GGG","GAG","GGG"], keys: { G: "lingote_oro", A: "manzana" } },
+        { name: "Pala de Hierro", resultName: "Pala de Hierro", pattern: ["I","S","S"], keys: { I: "lingote_hierro", S: "palo" } },
+        { name: "Azada de Madera", resultName: "Azada de Madera", pattern: ["PP"," S"," S"], keys: { P: "tablones_madera", S:"palo" } },
+        { name: "Cama", resultName: "Cama", pattern: ["WWW","PPP","   "], keys: { W: "lana", P: "tablones_madera" } },
+        { name: "Papel", resultName: "Papel", pattern: ["CCC","   ","   "], keys: { C: "cana_de_azucar" } },
+        { name: "Libro", resultName: "Libro", pattern: ["PPP","P P","PPP"], keys: { P: "papel" } },
+        { name: "Bloque de Diamante", resultName: "Bloque de Diamante", pattern: ["DDD","DDD","DDD"], keys: { D: "diamante" } },
+        { name: "Palo", resultName: "Palo", pattern: ["P","P"," "], keys: { P: "tablones_madera" } },
+        { name: "Perla de Ender", resultName: "Perla de Ender", pattern: [" E "," E "," E "], keys: { E: "perla_ender" } },
+        { name: "Bloque de Oro", resultName: "Bloque de Oro", pattern: ["GGG","GGG","GGG"], keys: { G: "lingote_oro" } },
+        { name: "Bloque de Hierro", resultName: "Bloque de Hierro", pattern: ["III","III","III"], keys: { I: "lingote_hierro" } }
+    ];
+
+    // --------------------------------------------------------------
+    // 3. PERSISTENCIA localStorage
+    // --------------------------------------------------------------
+    let allRecipes = [];
+    const STORAGE_KEY = 'minecraft_dual_recipes';
+
+    function loadRecipes() {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+            try {
+                const custom = JSON.parse(stored);
+                const baseNames = new Set(BASE_RECIPES.map(r => r.name));
+                const filtered = custom.filter(r => !baseNames.has(r.name));
+                allRecipes = [...BASE_RECIPES, ...filtered];
+            } catch(e) { allRecipes = [...BASE_RECIPES]; }
+        } else { allRecipes = [...BASE_RECIPES]; }
+    }
+    function saveCustomRecipes() {
+        const baseNames = new Set(BASE_RECIPES.map(r => r.name));
+        const customs = allRecipes.filter(r => !baseNames.has(r.name));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(customs));
+    }
+
+    // --------------------------------------------------------------
+    // 4. CUADRÍCULA IZQUIERDA (VISUALIZADOR) y DERECHA (EDITOR)
+    // --------------------------------------------------------------
+    let viewerGridItems = Array(9).fill(null);
+    let editorGridItems = Array(9).fill(null);
+
+    function renderGrid(gridId, itemsArray) {
+        const container = document.getElementById(gridId);
+        if (!container) return;
+        for (let i=0; i<9; i++) {
+            const itemId = itemsArray[i];
+            const slot = container.children[i];
+            if (itemId && ITEM_DICT[itemId]) {
+                slot.innerHTML = `<span style="font-size:2rem;">${getEmoji(itemId)}</span>`;
+                slot.title = getItemName(itemId);
+            } else {
+                slot.innerHTML = `<span style="opacity:0.4; font-size:1.5rem;">⬚</span>`;
+                slot.title = "";
+            }
+        }
+    }
+
+    // Actualizar resultado del editor según patrón
+    function updateEditorResult() {
+        const { pattern, keys } = getPatternFromGrid(editorGridItems);
+        const matched = findMatchingRecipe(pattern, keys);
+        const resultDiv = document.getElementById('editorEmoji');
+        const nameSpan = document.getElementById('editorName');
+        if (matched) {
+            resultDiv.innerHTML = getEmoji(matched.resultName.toLowerCase().replace(/\s/g,'_')) || "🔨";
+            nameSpan.innerText = matched.resultName;
+        } else {
+            resultDiv.innerHTML = "❓";
+            nameSpan.innerText = "Sin receta";
+        }
+    }
+
+    function getPatternFromGrid(grid) {
+        const usedMap = new Map();
+        let nextLetter = 65;
+        const rows = ["","",""];
+        for (let r=0; r<3; r++) {
+            let rowStr = "";
+            for (let c=0; c<3; c++) {
+                const idx = r*3+c;
+                const item = grid[idx];
+                if (item) {
+                    if (!usedMap.has(item)) usedMap.set(item, String.fromCharCode(nextLetter++));
+                    rowStr += usedMap.get(item);
+                } else rowStr += " ";
+            }
+            rows[r] = rowStr;
+        }
+        const keys = {};
+        for (let [itemId, letter] of usedMap.entries()) keys[letter] = itemId;
+        return { pattern: rows, keys };
+    }
+
+    function findMatchingRecipe(pattern, keys) {
+        const patNorm = pattern.map(p => (p+"   ").slice(0,3));
+        return allRecipes.find(rec => {
+            const recPat = rec.pattern.map(p => (p+"   ").slice(0,3));
+            if (JSON.stringify(recPat) !== JSON.stringify(patNorm)) return false;
+            for (let [ch, item] of Object.entries(rec.keys)) {
+                if (keys[ch] !== item) return false;
+            }
+            return true;
+        });
+    }
+
+    // Cargar receta seleccionada en el visualizador
+    function loadRecipeToViewer(recipe) {
+        if (!recipe) return;
+        const newGrid = Array(9).fill(null);
+        const flat = recipe.pattern.join('');
+        for (let i=0; i<9 && i<flat.length; i++) {
+            const ch = flat[i];
+            if (ch !== ' ' && recipe.keys[ch]) newGrid[i] = recipe.keys[ch];
+        }
+        viewerGridItems = newGrid;
+        renderGrid('viewerGrid', viewerGridItems);
+        const resultEmoji = getEmoji(recipe.resultName.toLowerCase().replace(/\s/g,'_')) || "🏆";
+        document.getElementById('viewerEmoji').innerHTML = resultEmoji;
+        document.getElementById('viewerName').innerText = recipe.resultName;
+    }
+
+    // Guardar receta desde el editor
+    function saveCurrentEditorRecipe() {
+        const name = document.getElementById('newRecipeName').value.trim();
+        const resultName = document.getElementById('newResultName').value.trim();
+        if (!name || !resultName) { alert("Ingresa nombre de receta y resultado"); return; }
+        const { pattern, keys } = getPatternFromGrid(editorGridItems);
+        const hasItems = pattern.some(row => row.trim().length > 0);
+        if (!hasItems || Object.keys(keys).length === 0) { alert("La cuadrícula del editor está vacía. Arrastra items."); return; }
+        const newRecipe = { name, resultName, pattern, keys };
+        const idx = allRecipes.findIndex(r => r.name === name);
+        if (idx !== -1) {
+            if (confirm(`¿Sobrescribir receta "${name}"?`)) allRecipes[idx] = newRecipe;
+            else return;
+        } else allRecipes.push(newRecipe);
+        saveCustomRecipes();
+        updateRecipeSelector();
+        renderQuickList();
+        alert(`Receta "${name}" guardada`);
+        updateEditorResult();
+    }
+
+    function clearEditor() {
+        editorGridItems.fill(null);
+        renderGrid('editorGrid', editorGridItems);
+        updateEditorResult();
+    }
+
+    // --------------------------------------------------------------
+    // 5. DRAG & DROP (solo en el editor)
+    // --------------------------------------------------------------
+    function initDragDrop() {
+        const dragItems = document.querySelectorAll('.drag-item');
+        dragItems.forEach(el => {
+            el.setAttribute('draggable', 'true');
+            el.addEventListener('dragstart', (e) => {
+                const itemId = e.target.closest('.drag-item')?.getAttribute('data-item');
+                if (itemId) e.dataTransfer.setData('text/plain', itemId);
+                e.dataTransfer.effectAllowed = 'copy';
+            });
+        });
+        const slots = document.querySelectorAll('#editorGrid .slot');
+        slots.forEach((slot, idx) => {
+            slot.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; slot.classList.add('drag-over'); });
+            slot.addEventListener('dragleave', () => slot.classList.remove('drag-over'));
+            slot.addEventListener('drop', (e) => {
+                e.preventDefault();
+                slot.classList.remove('drag-over');
+                const itemId = e.dataTransfer.getData('text/plain');
+                if (itemId && ITEM_DICT[itemId]) {
+                    editorGridItems[idx] = itemId;
+                    renderGrid('editorGrid', editorGridItems);
+                    updateEditorResult();
+                }
+            });
+        });
+    }
+
+    // Renderizar inventario
+    function renderInventory() {
+        const container = document.getElementById('itemsGrid');
+        container.innerHTML = '';
+        BASE_ITEMS.forEach(itemId => {
+            const div = document.createElement('div');
+            div.className = 'drag-item';
+            div.setAttribute('data-item', itemId);
+            div.draggable = true;
+            div.innerHTML = `<div class="item-emoji">${getEmoji(itemId)}</div><span>${getItemName(itemId)}</span>`;
+            container.appendChild(div);
+        });
+        initDragDrop();
+    }
+
+    // Lista rápida de recetas
+    function renderQuickList() {
+        const container = document.getElementById('recipesQuickList');
+        container.innerHTML = '';
+        allRecipes.slice(0, 18).forEach(rec => {
+            const badge = document.createElement('button');
+            badge.style.cssText = 'background:#3a2a1c; border:none; color:#ffdfaa; padding:4px 8px; border-radius:30px; font-size:0.7rem; cursor:pointer;';
+            badge.innerText = rec.name;
+            badge.onclick = () => {
+                loadRecipeToViewer(rec);
+                document.getElementById('recipeSelector').value = rec.name;
+            };
+            container.appendChild(badge);
+        });
+    }
+
+    function updateRecipeSelector() {
+        const select = document.getElementById('recipeSelector');
+        select.innerHTML = '';
+        allRecipes.forEach(rec => {
+            const opt = document.createElement('option');
+            opt.value = rec.name;
+            opt.innerText = `${rec.name} → ${rec.resultName}`;
+            select.appendChild(opt);
+        });
+    }
+
+    // Exportar/Importar
+    function exportJSON() {
+        const data = JSON.stringify(allRecipes, null, 2);
+        const blob = new Blob([data], {type: 'application/json'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `minecraft_recipes_${Date.now()}.json`;
+        a.click(); URL.revokeObjectURL(a.href);
+    }
+    function importJSON(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const imported = JSON.parse(e.target.result);
+                if (Array.isArray(imported)) {
+                    if (confirm("Importar reemplazará recetas personalizadas (mantiene base).")) {
+                        const baseNames = new Set(BASE_RECIPES.map(r => r.name));
+                        const newCustom = imported.filter(r => !baseNames.has(r.name));
+                        allRecipes = [...BASE_RECIPES, ...newCustom];
+                        saveCustomRecipes();
+                        updateRecipeSelector();
+                        renderQuickList();
+                        alert(`Importado: ${newCustom.length} recetas.`);
+                    }
+                } else throw new Error();
+            } catch(err) { alert("JSON inválido"); }
+        };
+        reader.readAsText(file);
+    }
+
+    // Diccionario visual
+    function renderDictionary() {
+        const dictDiv = document.getElementById('dictionaryGrid');
+        dictDiv.innerHTML = '';
+        Object.entries(ITEM_DICT).forEach(([id, data]) => {
+            const span = document.createElement('span');
+            span.className = 'dict-item';
+            span.innerHTML = `<span style="font-size:1.2rem;">${data.emoji}</span> <strong>${data.name}</strong> <span style="color:#bc9a60;">(${id})</span>`;
+            dictDiv.appendChild(span);
+        });
+    }
+
+    // --------------------------------------------------------------
+    // 6. INICIALIZACIÓN
+    // --------------------------------------------------------------
+    function init() {
+        loadRecipes();
+        // Crear slots de ambas cuadrículas
+        const viewerDiv = document.getElementById('viewerGrid');
+        const editorDiv = document.getElementById('editorGrid');
+        viewerDiv.innerHTML = ''; editorDiv.innerHTML = '';
+        for (let i=0; i<9; i++) {
+            const slot1 = document.createElement('div'); slot1.className = 'slot';
+            const slot2 = document.createElement('div'); slot2.className = 'slot';
+            slot1.innerHTML = '<span>⬚</span>'; slot2.innerHTML = '<span>⬚</span>';
+            viewerDiv.appendChild(slot1);
+            editorDiv.appendChild(slot2);
+        }
+        renderGrid('viewerGrid', viewerGridItems);
+        renderGrid('editorGrid', editorGridItems);
+        renderInventory();
+        updateRecipeSelector();
+        renderQuickList();
+        renderDictionary();
+        
+        document.getElementById('loadRecipeBtn').addEventListener('click', () => {
+            const selectedName = document.getElementById('recipeSelector').value;
+            const recipe = allRecipes.find(r => r.name === selectedName);
+            if (recipe) loadRecipeToViewer(recipe);
+        });
+        document.getElementById('saveRecipeBtn').addEventListener('click', saveCurrentEditorRecipe);
+        document.getElementById('clearEditorBtn').addEventListener('click', clearEditor);
+        document.getElementById('exportRecipesBtn').addEventListener('click', exportJSON);
+        const fileImport = document.getElementById('importInput');
+        document.querySelector('label[for="importInput"]').addEventListener('click', () => fileImport.click());
+        fileImport.addEventListener('change', (e) => { if(e.target.files[0]) importJSON(e.target.files[0]); fileImport.value=''; });
+        
+        updateEditorResult();
+    }
+    init();
+</script>
+</body>
+</html>
