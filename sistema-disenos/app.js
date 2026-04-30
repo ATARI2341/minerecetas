@@ -172,14 +172,14 @@ function applyTheme(themeName) {
     localStorage.setItem('selectedTheme', themeName);
 }
 
+// Asegurar que los colores de fecha se actualicen al cambiar tema
 function updateDeadlineColors() {
-    // Actualizar colores de los badges según el tema personalizado
-    const vencidoColor = getComputedStyle(document.documentElement).getPropertyValue('--danger-color').trim();
-    const urgenteColor = getComputedStyle(document.documentElement).getPropertyValue('--urgent-color').trim();
-    const proximoColor = getComputedStyle(document.documentElement).getPropertyValue('--warning-color').trim();
-    const normalColor = getComputedStyle(document.documentElement).getPropertyValue('--success-color').trim();
+    const computedStyle = getComputedStyle(document.documentElement);
+    const vencidoColor = computedStyle.getPropertyValue('--danger-color').trim();
+    const urgenteColor = computedStyle.getPropertyValue('--urgent-color').trim();
+    const proximoColor = computedStyle.getPropertyValue('--warning-color').trim();
+    const normalColor = computedStyle.getPropertyValue('--success-color').trim();
     
-    // Agregar estilos dinámicos para los badges
     let styleTag = document.getElementById('deadline-colors');
     if (!styleTag) {
         styleTag = document.createElement('style');
@@ -195,8 +195,26 @@ function updateDeadlineColors() {
         .request-card.deadline-urgente { border-left-color: ${urgenteColor}; }
         .request-card.deadline-proximo { border-left-color: ${proximoColor}; }
         .request-card.deadline-normal { border-left-color: ${normalColor}; }
+        @keyframes pulseOrange {
+            0%, 100% { box-shadow: 0 2px 4px ${urgenteColor}33; }
+            50% { box-shadow: 0 4px 12px ${urgenteColor}66; }
+        }
     `;
 }
+
+// Modificar la función applyTheme para que actualice los colores de fecha
+const originalApplyTheme = applyTheme;
+applyTheme = function(themeName) {
+    originalApplyTheme(themeName);
+    updateDeadlineColors();
+};
+
+// Modificar saveThemeFromForm para que actualice los colores
+const originalSaveTheme = saveThemeFromForm;
+saveThemeFromForm = function() {
+    originalSaveTheme();
+    updateDeadlineColors();
+};
 
 function setupCustomizationModal() {
     const modal = document.getElementById('customizeModal');
