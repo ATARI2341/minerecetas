@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // Variables globales
 let requests = [];
 let designTypes = [];
+let customTheme = {};
 let form, requestsList, searchInput, statusFilter, requestCount, deadlineFilter;
 let currentEditId = null;
 
@@ -16,7 +17,6 @@ function loadDesignTypes() {
     if (saved) {
         designTypes = JSON.parse(saved);
     } else {
-        // Tipos por defecto
         designTypes = [
             { name: 'Logo', icon: '🖌️' },
             { name: 'Sitio Web', icon: '🌐' },
@@ -91,6 +91,346 @@ function getDeadlineText(days) {
     return `Vence en ${days} días`;
 }
 
+// ============ SISTEMA DE TEMAS PERSONALIZABLES ============
+function loadCustomTheme() {
+    const saved = localStorage.getItem('customTheme');
+    if (saved) {
+        try {
+            customTheme = JSON.parse(saved);
+            console.log('Tema personalizado cargado');
+        } catch(e) {
+            console.error('Error al cargar tema:', e);
+            customTheme = getDefaultTheme();
+        }
+    } else {
+        customTheme = getDefaultTheme();
+    }
+    return customTheme;
+}
+
+function getDefaultTheme() {
+    return {
+        '--primary-color': '#4361ee',
+        '--secondary-color': '#3f37c9',
+        '--bg-color': '#f8f9fa',
+        '--card-bg': '#ffffff',
+        '--text-color': '#212529',
+        '--border-color': '#dee2e6',
+        '--border-radius': '12px',
+        '--font-family': "'Segoe UI', system-ui",
+        '--danger-color': '#dc3545',
+        '--warning-color': '#ffc107',
+        '--urgent-color': '#ff6b6b',
+        '--success-color': '#28a745'
+    };
+}
+
+function applyTheme(themeName) {
+    if (themeName === 'custom') {
+        // Aplicar tema personalizado
+        const theme = loadCustomTheme();
+        for (const [property, value] of Object.entries(theme)) {
+            document.documentElement.style.setProperty(property, value);
+        }
+        document.body.className = 'custom';
+        // Actualizar los colores de los badges de fecha
+        updateDeadlineColors();
+    } else {
+        // Aplicar temas predefinidos
+        const themes = {
+            light: {
+                '--bg-color': '#f8f9fa',
+                '--card-bg': '#ffffff',
+                '--text-color': '#212529',
+                '--border-color': '#dee2e6',
+                '--primary-color': '#4361ee',
+                '--secondary-color': '#3f37c9'
+            },
+            dark: {
+                '--bg-color': '#1a1a2e',
+                '--card-bg': '#16213e',
+                '--text-color': '#eeeeee',
+                '--border-color': '#0f3460',
+                '--primary-color': '#6c63ff',
+                '--secondary-color': '#5a52d5'
+            }
+        };
+        
+        const theme = themes[themeName] || themes.light;
+        for (const [property, value] of Object.entries(theme)) {
+            document.documentElement.style.setProperty(property, value);
+        }
+        document.body.className = themeName;
+        
+        // Resetear variables de fecha si es necesario
+        document.documentElement.style.setProperty('--danger-color', '#dc3545');
+        document.documentElement.style.setProperty('--urgent-color', '#ff6b6b');
+        document.documentElement.style.setProperty('--warning-color', '#ffc107');
+        document.documentElement.style.setProperty('--success-color', '#28a745');
+    }
+    
+    localStorage.setItem('selectedTheme', themeName);
+}
+
+function updateDeadlineColors() {
+    // Actualizar colores de los badges según el tema personalizado
+    const vencidoColor = getComputedStyle(document.documentElement).getPropertyValue('--danger-color').trim();
+    const urgenteColor = getComputedStyle(document.documentElement).getPropertyValue('--urgent-color').trim();
+    const proximoColor = getComputedStyle(document.documentElement).getPropertyValue('--warning-color').trim();
+    const normalColor = getComputedStyle(document.documentElement).getPropertyValue('--success-color').trim();
+    
+    // Agregar estilos dinámicos para los badges
+    let styleTag = document.getElementById('deadline-colors');
+    if (!styleTag) {
+        styleTag = document.createElement('style');
+        styleTag.id = 'deadline-colors';
+        document.head.appendChild(styleTag);
+    }
+    
+    styleTag.textContent = `
+        .deadline-badge.vencido { background: ${vencidoColor}; color: white; }
+        .deadline-badge.urgente { background: ${urgenteColor}; color: white; }
+        .deadline-badge.proximo { background: ${proximoColor}; color: #333; }
+        .request-card.deadline-vencido { border-left-color: ${vencidoColor}; }
+        .request-card.deadline-urgente { border-left-color: ${urgenteColor}; }
+        .request-card.deadline-proximo { border-left-color: ${proximoColor}; }
+        .request-card.deadline-normal { border-left-color: ${normalColor}; }
+    `;
+}
+
+function setupCustomizationModal() {
+    const modal = document.getElementById('customizeModal');
+    const customizeBtn = document.getElementById('customizeThemeBtn');
+    const closeBtn = modal.querySelector('.close');
+    const applyBtn = document.getElementById('applyCustomTheme');
+    const resetBtn = document.getElementById('resetCustomTheme');
+    const exportBtn = document.getElementById('exportThemeBtn');
+    const importBtn = document.getElementById('importThemeBtn');
+    const importFile = document.getElementById('importThemeFile');
+    
+    // Abrir modal
+    if (customizeBtn) {
+        customizeBtn.onclick = () => {
+            loadCurrentThemeToForm();
+            modal.style.display = 'block';
+        };
+    }
+    
+    // Cerrar modal
+    if (closeBtn) {
+        closeBtn.onclick = () => modal.style.display = 'none';
+    }
+    
+    // Aplicar tema personalizado
+    if (applyBtn) {
+        applyBtn.onclick = () => {
+            saveThemeFromForm();
+            applyTheme('custom');
+            showNotification('Tema personalizado aplicado', 'success');
+            modal.style.display = 'none';
+        };
+    }
+    
+    // Resetear tema
+    if (resetBtn) {
+        resetBtn.onclick = () => {
+            customTheme = getDefaultTheme();
+            saveThemeToLocalStorage();
+            applyTheme('custom');
+            loadCurrentThemeToForm();
+            showNotification('Tema restablecido a valores por defecto', 'success');
+        };
+    }
+    
+    // Exportar tema
+    if (exportBtn) {
+        exportBtn.onclick = () => {
+            const themeData = {
+                name: 'Mi Tema Personalizado',
+                version: '1.0',
+                created: new Date().toISOString(),
+                theme: customTheme
+            };
+            const jsonString = JSON.stringify(themeData, null, 2);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `tema_personalizado_${new Date().toISOString().slice(0,19)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showNotification('Tema exportado correctamente', 'success');
+        };
+    }
+    
+    // Importar tema
+    if (importBtn) {
+        importBtn.onclick = () => importFile.click();
+    }
+    
+    if (importFile) {
+        importFile.onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const imported = JSON.parse(event.target.result);
+                    if (imported.theme) {
+                        customTheme = imported.theme;
+                        saveThemeToLocalStorage();
+                        applyTheme('custom');
+                        loadCurrentThemeToForm();
+                        showNotification('Tema importado correctamente', 'success');
+                    } else {
+                        showNotification('Archivo de tema inválido', 'error');
+                    }
+                } catch (error) {
+                    showNotification('Error al importar tema', 'error');
+                }
+                importFile.value = '';
+            };
+            reader.readAsText(file);
+        };
+    }
+    
+    // Vista previa de colores
+    document.querySelectorAll('.preview-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const property = btn.dataset.property;
+            let value = '';
+            
+            switch(property) {
+                case 'primary-color':
+                    value = document.getElementById('customPrimaryColor').value;
+                    break;
+                case 'secondary-color':
+                    value = document.getElementById('customSecondaryColor').value;
+                    break;
+                case 'bg-color':
+                    value = document.getElementById('customBgColor').value;
+                    break;
+                case 'card-bg':
+                    value = document.getElementById('customCardBgColor').value;
+                    break;
+                case 'text-color':
+                    value = document.getElementById('customTextColor').value;
+                    break;
+                case 'border-color':
+                    value = document.getElementById('customBorderColor').value;
+                    break;
+            }
+            
+            if (value) {
+                const cssProperty = property === 'card-bg' ? '--card-bg' : `--${property}`;
+                const originalValue = document.documentElement.style.getPropertyProperty(cssProperty);
+                document.documentElement.style.setProperty(cssProperty, value);
+                setTimeout(() => {
+                    document.documentElement.style.setProperty(cssProperty, originalValue);
+                }, 2000);
+                showNotification(`Vista previa de ${property}`, 'info');
+            }
+        });
+    });
+    
+    // Rango para border radius
+    const radiusSlider = document.getElementById('customBorderRadius');
+    const radiusValue = document.getElementById('borderRadiusValue');
+    if (radiusSlider && radiusValue) {
+        radiusSlider.oninput = () => {
+            radiusValue.textContent = radiusSlider.value;
+            document.documentElement.style.setProperty('--border-radius', `${radiusSlider.value}px`);
+        };
+    }
+    
+    // Selector de fuente
+    const fontSelect = document.getElementById('customFontFamily');
+    if (fontSelect) {
+        fontSelect.onchange = () => {
+            document.documentElement.style.setProperty('--font-family', fontSelect.value);
+        };
+    }
+    
+    window.onclick = (event) => {
+        if (event.target === modal) {
+            modal.style.display = 'none';
+        }
+    };
+}
+
+function loadCurrentThemeToForm() {
+    const computedStyle = getComputedStyle(document.documentElement);
+    
+    document.getElementById('customPrimaryColor').value = rgbToHex(computedStyle.getPropertyValue('--primary-color')) || '#4361ee';
+    document.getElementById('customSecondaryColor').value = rgbToHex(computedStyle.getPropertyValue('--secondary-color')) || '#3f37c9';
+    document.getElementById('customBgColor').value = rgbToHex(computedStyle.getPropertyValue('--bg-color')) || '#f8f9fa';
+    document.getElementById('customCardBgColor').value = rgbToHex(computedStyle.getPropertyValue('--card-bg')) || '#ffffff';
+    document.getElementById('customTextColor').value = rgbToHex(computedStyle.getPropertyValue('--text-color')) || '#212529';
+    document.getElementById('customBorderColor').value = rgbToHex(computedStyle.getPropertyValue('--border-color')) || '#dee2e6';
+    
+    const borderRadius = computedStyle.getPropertyValue('--border-radius').replace('px', '');
+    document.getElementById('customBorderRadius').value = parseInt(borderRadius) || 12;
+    document.getElementById('borderRadiusValue').textContent = parseInt(borderRadius) || 12;
+    
+    const fontFamily = computedStyle.getPropertyValue('--font-family').replace(/'/g, '');
+    const fontSelect = document.getElementById('customFontFamily');
+    if (fontSelect) {
+        for(let i = 0; i < fontSelect.options.length; i++) {
+            if (fontSelect.options[i].value.replace(/'/g, '') === fontFamily) {
+                fontSelect.selectedIndex = i;
+                break;
+            }
+        }
+    }
+    
+    // Colores de fechas
+    document.getElementById('customVencidoColor').value = computedStyle.getPropertyValue('--danger-color') || '#dc3545';
+    document.getElementById('customUrgenteColor').value = computedStyle.getPropertyValue('--urgent-color') || '#ff6b6b';
+    document.getElementById('customProximoColor').value = computedStyle.getPropertyValue('--warning-color') || '#ffc107';
+    document.getElementById('customNormalColor').value = computedStyle.getPropertyValue('--success-color') || '#28a745';
+}
+
+function rgbToHex(rgb) {
+    if (!rgb || rgb === '') return null;
+    
+    // Si ya es hex
+    if (rgb.startsWith('#')) return rgb;
+    
+    // Convertir rgb(r,g,b) a hex
+    const match = rgb.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+    if (match) {
+        return '#' + ((1 << 24) + (parseInt(match[1]) << 16) + (parseInt(match[2]) << 8) + parseInt(match[3])).toString(16).slice(1);
+    }
+    
+    return null;
+}
+
+function saveThemeFromForm() {
+    customTheme = {
+        '--primary-color': document.getElementById('customPrimaryColor').value,
+        '--secondary-color': document.getElementById('customSecondaryColor').value,
+        '--bg-color': document.getElementById('customBgColor').value,
+        '--card-bg': document.getElementById('customCardBgColor').value,
+        '--text-color': document.getElementById('customTextColor').value,
+        '--border-color': document.getElementById('customBorderColor').value,
+        '--border-radius': document.getElementById('customBorderRadius').value + 'px',
+        '--font-family': document.getElementById('customFontFamily').value,
+        '--danger-color': document.getElementById('customVencidoColor').value,
+        '--urgent-color': document.getElementById('customUrgenteColor').value,
+        '--warning-color': document.getElementById('customProximoColor').value,
+        '--success-color': document.getElementById('customNormalColor').value
+    };
+    
+    saveThemeToLocalStorage();
+}
+
+function saveThemeToLocalStorage() {
+    localStorage.setItem('customTheme', JSON.stringify(customTheme));
+}
+
 function init() {
     // Cargar datos desde localStorage
     const savedData = localStorage.getItem('designRequests');
@@ -103,7 +443,6 @@ function init() {
             requests = [];
         }
     } else {
-        // Datos de ejemplo
         const today = new Date();
         requests = [
             {
@@ -157,8 +496,9 @@ function init() {
         });
     }
     
-    // Configurar modal
+    // Configurar modales
     setupModal();
+    setupCustomizationModal();
     
     // Validar fecha en tiempo real
     const deliveryDateInput = document.getElementById('deliveryDate');
@@ -215,7 +555,7 @@ function validateDate() {
 
 function setupModal() {
     const modal = document.getElementById('designTypeModal');
-    const closeBtn = document.querySelector('.close');
+    const closeBtn = document.querySelector('#designTypeModal .close');
     const saveBtn = document.getElementById('saveDesignTypeBtn');
     
     if (!modal) return;
@@ -235,12 +575,6 @@ function setupModal() {
             }
         };
     }
-    
-    window.onclick = (event) => {
-        if (event.target === modal) {
-            modal.style.display = 'none';
-        }
-    };
 }
 
 function saveToLocalStorage() {
@@ -258,12 +592,10 @@ function saveToLocalStorage() {
 function renderRequests() {
     if (!requestsList) return;
     
-    // Obtener valores de filtros
     const searchTerm = (searchInput && searchInput.value) ? searchInput.value.toLowerCase() : '';
     const filterStatus = (statusFilter && statusFilter.value) ? statusFilter.value : 'todas';
     const filterDeadline = (deadlineFilter && deadlineFilter.value) ? deadlineFilter.value : 'todas';
     
-    // Filtrar solicitudes
     let filtered = [...requests];
     
     if (searchTerm) {
@@ -286,19 +618,16 @@ function renderRequests() {
         });
     }
     
-    // Ordenar por fecha límite (las más urgentes primero)
     filtered.sort((a, b) => {
         const dateA = a.deliveryDate ? new Date(a.deliveryDate) : new Date(8640000000000000);
         const dateB = b.deliveryDate ? new Date(b.deliveryDate) : new Date(8640000000000000);
         return dateA - dateB;
     });
     
-    // Actualizar contador
     if (requestCount) {
         requestCount.textContent = `(${filtered.length})`;
     }
     
-    // Mostrar mensaje si no hay datos
     if (filtered.length === 0) {
         requestsList.innerHTML = `
             <div class="empty-state">
@@ -309,7 +638,6 @@ function renderRequests() {
         return;
     }
     
-    // Renderizar tarjetas
     requestsList.innerHTML = filtered.map(req => {
         const deadlineStatus = getDeadlineStatus(req.deliveryDate);
         const today = new Date();
@@ -346,12 +674,10 @@ function renderRequests() {
         `;
     }).join('');
     
-    // Agregar event listeners a los elementos dinámicos
     attachDynamicEvents();
 }
 
 function attachDynamicEvents() {
-    // Eventos para cambio de estado
     document.querySelectorAll('.status-select').forEach(select => {
         select.addEventListener('change', function(e) {
             e.stopPropagation();
@@ -367,7 +693,6 @@ function attachDynamicEvents() {
         });
     });
     
-    // Eventos para eliminar
     document.querySelectorAll('.delete-btn').forEach(btn => {
         btn.addEventListener('click', function(e) {
             e.stopPropagation();
@@ -381,7 +706,6 @@ function attachDynamicEvents() {
         });
     });
     
-    // Eventos para editar
     document.querySelectorAll('.edit-btn').forEach(btn => {
         btn.addEventListener('click', function(e) {
             e.stopPropagation();
@@ -407,7 +731,6 @@ function editRequest(id) {
     
     currentEditId = id;
     
-    // Llenar el formulario con los datos
     document.getElementById('clientName').value = request.clientName || '';
     document.getElementById('projectName').value = request.projectName || '';
     document.getElementById('designType').value = request.designType || '';
@@ -415,26 +738,21 @@ function editRequest(id) {
     document.getElementById('deliveryDate').value = request.deliveryDate || '';
     document.getElementById('priority').value = request.priority || 'media';
     
-    // Validar la fecha
     validateDate();
     
-    // Cambiar el texto del botón
     const submitBtn = form.querySelector('button[type="submit"]');
     if (submitBtn) {
         submitBtn.textContent = '✏️ Actualizar Solicitud';
         submitBtn.style.backgroundColor = '#ffc107';
     }
     
-    // Scroll al formulario
     form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    
     showNotification('Editando solicitud - Modifica los campos y actualiza', 'info');
 }
 
 function handleSubmit(e) {
     e.preventDefault();
     
-    // Obtener valores del formulario
     const clientName = document.getElementById('clientName').value.trim();
     const projectName = document.getElementById('projectName').value.trim();
     const designType = document.getElementById('designType').value;
@@ -442,7 +760,6 @@ function handleSubmit(e) {
     const deliveryDate = document.getElementById('deliveryDate').value;
     const priority = document.getElementById('priority').value;
     
-    // Validar campos requeridos
     if (!clientName) {
         showNotification('Por favor ingresa el nombre del cliente', 'warning');
         return;
@@ -463,7 +780,6 @@ function handleSubmit(e) {
         return;
     }
     
-    // Validar que la fecha no sea pasada
     const selectedDate = new Date(deliveryDate);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -474,7 +790,6 @@ function handleSubmit(e) {
     }
     
     if (currentEditId) {
-        // Modo edición
         const requestIndex = requests.findIndex(r => r.id === currentEditId);
         if (requestIndex !== -1) {
             requests[requestIndex] = {
@@ -492,7 +807,6 @@ function handleSubmit(e) {
             showNotification('Solicitud actualizada exitosamente', 'success');
             currentEditId = null;
             
-            // Resetear botón
             const submitBtn = form.querySelector('button[type="submit"]');
             if (submitBtn) {
                 submitBtn.textContent = '📤 Enviar Solicitud';
@@ -500,7 +814,6 @@ function handleSubmit(e) {
             }
         }
     } else {
-        // Modo crear
         const newRequest = {
             id: Date.now(),
             clientName,
@@ -519,7 +832,6 @@ function handleSubmit(e) {
         showNotification('Solicitud creada exitosamente', 'success');
     }
     
-    // Resetear formulario
     form.reset();
     const warningSpan = document.getElementById('dateWarning');
     if (warningSpan) warningSpan.innerHTML = '';
@@ -669,7 +981,6 @@ function showStats() {
     const completed = requests.filter(r => r.status === 'completado').length;
     const highPriority = requests.filter(r => r.priority === 'alta').length;
     
-    // Estadísticas de fechas
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const urgent = requests.filter(r => getDeadlineStatus(r.deliveryDate) === 'urgente').length;
@@ -741,45 +1052,16 @@ function initTheme() {
     
     const savedTheme = localStorage.getItem('selectedTheme');
     if (savedTheme) {
-        applyTheme(savedTheme);
         themeSelect.value = savedTheme;
+        applyTheme(savedTheme);
+    } else {
+        applyTheme('light');
     }
     
     themeSelect.addEventListener('change', function(e) {
         applyTheme(e.target.value);
         localStorage.setItem('selectedTheme', e.target.value);
     });
-}
-
-function applyTheme(themeName) {
-    const themes = {
-        light: {
-            '--bg-color': '#f8f9fa',
-            '--card-bg': '#ffffff',
-            '--text-color': '#212529',
-            '--border-color': '#dee2e6'
-        },
-        dark: {
-            '--bg-color': '#1a1a2e',
-            '--card-bg': '#16213e',
-            '--text-color': '#eeeeee',
-            '--border-color': '#0f3460'
-        },
-        custom: {
-            '--bg-color': '#f0f3fa',
-            '--card-bg': '#ffffff',
-            '--text-color': '#2c3e50',
-            '--border-color': '#bdc3c7'
-        }
-    };
-    
-    const theme = themes[themeName] || themes.light;
-    
-    for (const [property, value] of Object.entries(theme)) {
-        document.documentElement.style.setProperty(property, value);
-    }
-    
-    document.body.className = themeName;
 }
 
 function addDynamicStyles() {
@@ -795,6 +1077,107 @@ function addDynamicStyles() {
         @keyframes slideOut {
             from { transform: translateX(0); opacity: 1; }
             to { transform: translateX(100%); opacity: 0; }
+        }
+        
+        .customize-modal {
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .customize-section {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .customize-section h3 {
+            margin-bottom: 15px;
+            font-size: 16px;
+            color: var(--primary-color);
+        }
+        
+        .color-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .color-control label {
+            width: 120px;
+            font-size: 14px;
+        }
+        
+        .color-control input[type="color"] {
+            width: 60px;
+            height: 40px;
+            padding: 2px;
+            cursor: pointer;
+        }
+        
+        .preview-btn {
+            width: auto;
+            padding: 5px 10px;
+            font-size: 12px;
+            background: var(--primary-color);
+            margin: 0;
+        }
+        
+        .range-control {
+            margin-bottom: 10px;
+        }
+        
+        .range-control label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .range-control input {
+            width: 100%;
+        }
+        
+        .select-control {
+            margin-bottom: 10px;
+        }
+        
+        .select-control label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .customize-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .apply-btn {
+            background: #28a745;
+            color: white;
+            flex: 1;
+        }
+        
+        .reset-btn {
+            background: #ffc107;
+            color: #333;
+            flex: 1;
+        }
+        
+        .export-theme-btn, .import-theme-btn {
+            background: #17a2b8;
+            color: white;
+            flex: 1;
+        }
+        
+        .customize-btn {
+            background: #6c757d;
+            margin-left: 10px;
+            width: auto;
+            padding: 5px 10px;
+            font-size: 12px;
         }
     `;
     document.head.appendChild(style);

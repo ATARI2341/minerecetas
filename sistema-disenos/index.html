@@ -17,6 +17,7 @@
                     <option value="dark">🌙 Oscuro</option>
                     <option value="custom">🎨 Personalizado</option>
                 </select>
+                <button type="button" id="customizeThemeBtn" class="customize-btn">⚙️ Personalizar</button>
             </div>
         </header>
 
@@ -97,6 +98,104 @@
                 <option value="✏️">✏️ Dibujo</option>
             </select>
             <button id="saveDesignTypeBtn">Guardar tipo</button>
+        </div>
+    </div>
+
+    <!-- Modal para personalización de temas -->
+    <div id="customizeModal" class="modal">
+        <div class="modal-content customize-modal">
+            <span class="close">&times;</span>
+            <h2>🎨 Personalizar Tema</h2>
+            
+            <div class="customize-section">
+                <h3>Colores principales</h3>
+                <div class="color-control">
+                    <label>Color primario:</label>
+                    <input type="color" id="customPrimaryColor" value="#4361ee">
+                    <button class="preview-btn" data-property="primary-color">Vista previa</button>
+                </div>
+                <div class="color-control">
+                    <label>Color secundario:</label>
+                    <input type="color" id="customSecondaryColor" value="#3f37c9">
+                    <button class="preview-btn" data-property="secondary-color">Vista previa</button>
+                </div>
+            </div>
+
+            <div class="customize-section">
+                <h3>Colores de fondo</h3>
+                <div class="color-control">
+                    <label>Fondo principal:</label>
+                    <input type="color" id="customBgColor" value="#f8f9fa">
+                    <button class="preview-btn" data-property="bg-color">Vista previa</button>
+                </div>
+                <div class="color-control">
+                    <label>Fondo de tarjetas:</label>
+                    <input type="color" id="customCardBgColor" value="#ffffff">
+                    <button class="preview-btn" data-property="card-bg">Vista previa</button>
+                </div>
+            </div>
+
+            <div class="customize-section">
+                <h3>Texto y bordes</h3>
+                <div class="color-control">
+                    <label>Color de texto:</label>
+                    <input type="color" id="customTextColor" value="#212529">
+                    <button class="preview-btn" data-property="text-color">Vista previa</button>
+                </div>
+                <div class="color-control">
+                    <label>Color de bordes:</label>
+                    <input type="color" id="customBorderColor" value="#dee2e6">
+                    <button class="preview-btn" data-property="border-color">Vista previa</button>
+                </div>
+            </div>
+
+            <div class="customize-section">
+                <h3>Diseño</h3>
+                <div class="range-control">
+                    <label>Bordes redondeados: <span id="borderRadiusValue">12</span>px</label>
+                    <input type="range" id="customBorderRadius" min="0" max="30" value="12" step="1">
+                </div>
+                <div class="select-control">
+                    <label>Fuente:</label>
+                    <select id="customFontFamily">
+                        <option value="'Segoe UI', system-ui">Segoe UI (Default)</option>
+                        <option value="'Roboto', sans-serif">Roboto</option>
+                        <option value="'Open Sans', sans-serif">Open Sans</option>
+                        <option value="'Montserrat', sans-serif">Montserrat</option>
+                        <option value="'Poppins', sans-serif">Poppins</option>
+                        <option value="Arial, sans-serif">Arial</option>
+                        <option value="'Comic Neue', cursive">Comic Neue</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="customize-section">
+                <h3>Colores de estado (fechas límite)</h3>
+                <div class="color-control">
+                    <label>Vencidas (rojo):</label>
+                    <input type="color" id="customVencidoColor" value="#dc3545">
+                </div>
+                <div class="color-control">
+                    <label>Urgentes (naranja):</label>
+                    <input type="color" id="customUrgenteColor" value="#ff6b6b">
+                </div>
+                <div class="color-control">
+                    <label>Próximas (amarillo):</label>
+                    <input type="color" id="customProximoColor" value="#ffc107">
+                </div>
+                <div class="color-control">
+                    <label>Normales (verde):</label>
+                    <input type="color" id="customNormalColor" value="#28a745">
+                </div>
+            </div>
+
+            <div class="customize-actions">
+                <button id="applyCustomTheme" class="apply-btn">✅ Aplicar tema</button>
+                <button id="resetCustomTheme" class="reset-btn">🔄 Resetear a default</button>
+                <button id="exportThemeBtn" class="export-theme-btn">💾 Exportar tema</button>
+                <button id="importThemeBtn" class="import-theme-btn">📁 Importar tema</button>
+                <input type="file" id="importThemeFile" accept=".json" style="display: none">
+            </div>
         </div>
     </div>
 
