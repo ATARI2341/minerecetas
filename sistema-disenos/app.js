@@ -220,7 +220,6 @@ function setupCustomizationModal() {
     const modal = document.getElementById('customizeModal');
     const customizeBtn = document.getElementById('customizeThemeBtn');
     const closeBtn = modal.querySelector('.close');
-    const applyBtn = document.getElementById('applyCustomTheme');
     const resetBtn = document.getElementById('resetCustomTheme');
     const exportBtn = document.getElementById('exportThemeBtn');
     const importBtn = document.getElementById('importThemeBtn');
@@ -239,24 +238,204 @@ function setupCustomizationModal() {
         closeBtn.onclick = () => modal.style.display = 'none';
     }
     
-    // Aplicar tema personalizado
-    if (applyBtn) {
-        applyBtn.onclick = () => {
-            saveThemeFromForm();
-            applyTheme('custom');
-            showNotification('Tema personalizado aplicado', 'success');
-            modal.style.display = 'none';
+    // ============ CAMBIOS AUTOMÁTICOS EN TIEMPO REAL ============
+    
+    // Función para aplicar cambios instantáneamente
+    function applyInstantChange(property, value) {
+        document.documentElement.style.setProperty(property, value);
+        // Guardar automáticamente después de cada cambio
+        saveCurrentThemeAutomatically();
+        // Actualizar colores de fecha
+        updateDeadlineColors();
+    }
+    
+    // Guardar tema automáticamente
+    function saveCurrentThemeAutomatically() {
+        const computedStyle = getComputedStyle(document.documentElement);
+        customTheme = {
+            '--primary-color': computedStyle.getPropertyValue('--primary-color').trim() || document.getElementById('customPrimaryColor')?.value || '#4361ee',
+            '--secondary-color': computedStyle.getPropertyValue('--secondary-color').trim() || document.getElementById('customSecondaryColor')?.value || '#3f37c9',
+            '--bg-color': computedStyle.getPropertyValue('--bg-color').trim() || document.getElementById('customBgColor')?.value || '#f8f9fa',
+            '--card-bg': computedStyle.getPropertyValue('--card-bg').trim() || document.getElementById('customCardBgColor')?.value || '#ffffff',
+            '--text-color': computedStyle.getPropertyValue('--text-color').trim() || document.getElementById('customTextColor')?.value || '#212529',
+            '--border-color': computedStyle.getPropertyValue('--border-color').trim() || document.getElementById('customBorderColor')?.value || '#dee2e6',
+            '--border-radius': computedStyle.getPropertyValue('--border-radius').trim() || document.getElementById('customBorderRadius')?.value + 'px' || '12px',
+            '--font-family': computedStyle.getPropertyValue('--font-family').trim() || document.getElementById('customFontFamily')?.value || "'Segoe UI', system-ui",
+            '--danger-color': computedStyle.getPropertyValue('--danger-color').trim() || document.getElementById('customVencidoColor')?.value || '#dc3545',
+            '--urgent-color': computedStyle.getPropertyValue('--urgent-color').trim() || document.getElementById('customUrgenteColor')?.value || '#ff6b6b',
+            '--warning-color': computedStyle.getPropertyValue('--warning-color').trim() || document.getElementById('customProximoColor')?.value || '#ffc107',
+            '--success-color': computedStyle.getPropertyValue('--success-color').trim() || document.getElementById('customNormalColor')?.value || '#28a745'
         };
+        saveThemeToLocalStorage();
+        // Cambiar a tema personalizado automáticamente
+        const themeSelect = document.getElementById('themeSelect');
+        if (themeSelect && themeSelect.value !== 'custom') {
+            themeSelect.value = 'custom';
+        }
+        document.body.className = 'custom';
+    }
+    
+    // 1. Color primario
+    const primaryColor = document.getElementById('customPrimaryColor');
+    if (primaryColor) {
+        primaryColor.addEventListener('input', (e) => {
+            applyInstantChange('--primary-color', e.target.value);
+            // También actualizar el color de los botones
+            const btns = document.querySelectorAll('button');
+            btns.forEach(btn => {
+                if (!btn.classList.contains('preview-btn') && !btn.classList.contains('small-btn')) {
+                    btn.style.backgroundColor = e.target.value;
+                }
+            });
+        });
+    }
+    
+    // 2. Color secundario
+    const secondaryColor = document.getElementById('customSecondaryColor');
+    if (secondaryColor) {
+        secondaryColor.addEventListener('input', (e) => {
+            applyInstantChange('--secondary-color', e.target.value);
+        });
+    }
+    
+    // 3. Color de fondo principal
+    const bgColor = document.getElementById('customBgColor');
+    if (bgColor) {
+        bgColor.addEventListener('input', (e) => {
+            applyInstantChange('--bg-color', e.target.value);
+            document.body.style.backgroundColor = e.target.value;
+        });
+    }
+    
+    // 4. Color de fondo de tarjetas
+    const cardBgColor = document.getElementById('customCardBgColor');
+    if (cardBgColor) {
+        cardBgColor.addEventListener('input', (e) => {
+            applyInstantChange('--card-bg', e.target.value);
+            // Actualizar tarjetas existentes
+            document.querySelectorAll('.request-card, .form-section, .requests-section, .modal-content').forEach(el => {
+                el.style.backgroundColor = e.target.value;
+            });
+        });
+    }
+    
+    // 5. Color de texto
+    const textColor = document.getElementById('customTextColor');
+    if (textColor) {
+        textColor.addEventListener('input', (e) => {
+            applyInstantChange('--text-color', e.target.value);
+            document.body.style.color = e.target.value;
+        });
+    }
+    
+    // 6. Color de bordes
+    const borderColor = document.getElementById('customBorderColor');
+    if (borderColor) {
+        borderColor.addEventListener('input', (e) => {
+            applyInstantChange('--border-color', e.target.value);
+        });
+    }
+    
+    // 7. Border radius (redondez)
+    const borderRadius = document.getElementById('customBorderRadius');
+    const radiusValue = document.getElementById('borderRadiusValue');
+    if (borderRadius && radiusValue) {
+        borderRadius.addEventListener('input', (e) => {
+            const value = e.target.value + 'px';
+            radiusValue.textContent = e.target.value;
+            applyInstantChange('--border-radius', value);
+            // Aplicar a elementos específicos
+            const elements = document.querySelectorAll('.form-section, .requests-section, .request-card, .modal-content, button, input, select, textarea');
+            elements.forEach(el => {
+                el.style.borderRadius = value;
+            });
+        });
+    }
+    
+    // 8. Fuente
+    const fontFamily = document.getElementById('customFontFamily');
+    if (fontFamily) {
+        fontFamily.addEventListener('change', (e) => {
+            applyInstantChange('--font-family', e.target.value);
+            document.body.style.fontFamily = e.target.value;
+        });
+    }
+    
+    // 9. Color vencido
+    const vencidoColor = document.getElementById('customVencidoColor');
+    if (vencidoColor) {
+        vencidoColor.addEventListener('input', (e) => {
+            applyInstantChange('--danger-color', e.target.value);
+            updateDeadlineColors();
+            // Actualizar elementos visibles
+            document.querySelectorAll('.deadline-badge.vencido, .request-card.deadline-vencido').forEach(el => {
+                if (el.classList.contains('deadline-badge')) {
+                    el.style.backgroundColor = e.target.value;
+                } else {
+                    el.style.borderLeftColor = e.target.value;
+                }
+            });
+        });
+    }
+    
+    // 10. Color urgente
+    const urgenteColor = document.getElementById('customUrgenteColor');
+    if (urgenteColor) {
+        urgenteColor.addEventListener('input', (e) => {
+            applyInstantChange('--urgent-color', e.target.value);
+            updateDeadlineColors();
+            document.querySelectorAll('.deadline-badge.urgente, .request-card.deadline-urgente').forEach(el => {
+                if (el.classList.contains('deadline-badge')) {
+                    el.style.backgroundColor = e.target.value;
+                } else {
+                    el.style.borderLeftColor = e.target.value;
+                }
+            });
+        });
+    }
+    
+    // 11. Color próximo
+    const proximoColor = document.getElementById('customProximoColor');
+    if (proximoColor) {
+        proximoColor.addEventListener('input', (e) => {
+            applyInstantChange('--warning-color', e.target.value);
+            updateDeadlineColors();
+            document.querySelectorAll('.deadline-badge.proximo, .request-card.deadline-proximo').forEach(el => {
+                if (el.classList.contains('deadline-badge')) {
+                    el.style.backgroundColor = e.target.value;
+                } else {
+                    el.style.borderLeftColor = e.target.value;
+                }
+            });
+        });
+    }
+    
+    // 12. Color normal
+    const normalColor = document.getElementById('customNormalColor');
+    if (normalColor) {
+        normalColor.addEventListener('input', (e) => {
+            applyInstantChange('--success-color', e.target.value);
+            updateDeadlineColors();
+            document.querySelectorAll('.request-card.deadline-normal').forEach(el => {
+                el.style.borderLeftColor = e.target.value;
+            });
+        });
     }
     
     // Resetear tema
     if (resetBtn) {
         resetBtn.onclick = () => {
             customTheme = getDefaultTheme();
+            // Aplicar todos los cambios
+            for (const [property, value] of Object.entries(customTheme)) {
+                document.documentElement.style.setProperty(property, value);
+            }
             saveThemeToLocalStorage();
-            applyTheme('custom');
             loadCurrentThemeToForm();
+            updateDeadlineColors();
             showNotification('Tema restablecido a valores por defecto', 'success');
+            // Forzar renderizado
+            renderRequests();
         };
     }
     
@@ -299,10 +478,19 @@ function setupCustomizationModal() {
                     const imported = JSON.parse(event.target.result);
                     if (imported.theme) {
                         customTheme = imported.theme;
+                        // Aplicar todos los cambios
+                        for (const [property, value] of Object.entries(customTheme)) {
+                            document.documentElement.style.setProperty(property, value);
+                        }
                         saveThemeToLocalStorage();
-                        applyTheme('custom');
                         loadCurrentThemeToForm();
+                        updateDeadlineColors();
                         showNotification('Tema importado correctamente', 'success');
+                        // Cambiar a tema personalizado
+                        const themeSelect = document.getElementById('themeSelect');
+                        if (themeSelect) themeSelect.value = 'custom';
+                        document.body.className = 'custom';
+                        renderRequests();
                     } else {
                         showNotification('Archivo de tema inválido', 'error');
                     }
@@ -315,63 +503,7 @@ function setupCustomizationModal() {
         };
     }
     
-    // Vista previa de colores
-    document.querySelectorAll('.preview-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const property = btn.dataset.property;
-            let value = '';
-            
-            switch(property) {
-                case 'primary-color':
-                    value = document.getElementById('customPrimaryColor').value;
-                    break;
-                case 'secondary-color':
-                    value = document.getElementById('customSecondaryColor').value;
-                    break;
-                case 'bg-color':
-                    value = document.getElementById('customBgColor').value;
-                    break;
-                case 'card-bg':
-                    value = document.getElementById('customCardBgColor').value;
-                    break;
-                case 'text-color':
-                    value = document.getElementById('customTextColor').value;
-                    break;
-                case 'border-color':
-                    value = document.getElementById('customBorderColor').value;
-                    break;
-            }
-            
-            if (value) {
-                const cssProperty = property === 'card-bg' ? '--card-bg' : `--${property}`;
-                const originalValue = document.documentElement.style.getPropertyProperty(cssProperty);
-                document.documentElement.style.setProperty(cssProperty, value);
-                setTimeout(() => {
-                    document.documentElement.style.setProperty(cssProperty, originalValue);
-                }, 2000);
-                showNotification(`Vista previa de ${property}`, 'info');
-            }
-        });
-    });
-    
-    // Rango para border radius
-    const radiusSlider = document.getElementById('customBorderRadius');
-    const radiusValue = document.getElementById('borderRadiusValue');
-    if (radiusSlider && radiusValue) {
-        radiusSlider.oninput = () => {
-            radiusValue.textContent = radiusSlider.value;
-            document.documentElement.style.setProperty('--border-radius', `${radiusSlider.value}px`);
-        };
-    }
-    
-    // Selector de fuente
-    const fontSelect = document.getElementById('customFontFamily');
-    if (fontSelect) {
-        fontSelect.onchange = () => {
-            document.documentElement.style.setProperty('--font-family', fontSelect.value);
-        };
-    }
-    
+    // Cerrar modal con click fuera
     window.onclick = (event) => {
         if (event.target === modal) {
             modal.style.display = 'none';
@@ -382,20 +514,35 @@ function setupCustomizationModal() {
 function loadCurrentThemeToForm() {
     const computedStyle = getComputedStyle(document.documentElement);
     
-    document.getElementById('customPrimaryColor').value = rgbToHex(computedStyle.getPropertyValue('--primary-color')) || '#4361ee';
-    document.getElementById('customSecondaryColor').value = rgbToHex(computedStyle.getPropertyValue('--secondary-color')) || '#3f37c9';
-    document.getElementById('customBgColor').value = rgbToHex(computedStyle.getPropertyValue('--bg-color')) || '#f8f9fa';
-    document.getElementById('customCardBgColor').value = rgbToHex(computedStyle.getPropertyValue('--card-bg')) || '#ffffff';
-    document.getElementById('customTextColor').value = rgbToHex(computedStyle.getPropertyValue('--text-color')) || '#212529';
-    document.getElementById('customBorderColor').value = rgbToHex(computedStyle.getPropertyValue('--border-color')) || '#dee2e6';
+    const primaryInput = document.getElementById('customPrimaryColor');
+    if (primaryInput) primaryInput.value = rgbToHex(computedStyle.getPropertyValue('--primary-color')) || '#4361ee';
     
-    const borderRadius = computedStyle.getPropertyValue('--border-radius').replace('px', '');
-    document.getElementById('customBorderRadius').value = parseInt(borderRadius) || 12;
-    document.getElementById('borderRadiusValue').textContent = parseInt(borderRadius) || 12;
+    const secondaryInput = document.getElementById('customSecondaryColor');
+    if (secondaryInput) secondaryInput.value = rgbToHex(computedStyle.getPropertyValue('--secondary-color')) || '#3f37c9';
     
-    const fontFamily = computedStyle.getPropertyValue('--font-family').replace(/'/g, '');
+    const bgInput = document.getElementById('customBgColor');
+    if (bgInput) bgInput.value = rgbToHex(computedStyle.getPropertyValue('--bg-color')) || '#f8f9fa';
+    
+    const cardBgInput = document.getElementById('customCardBgColor');
+    if (cardBgInput) cardBgInput.value = rgbToHex(computedStyle.getPropertyValue('--card-bg')) || '#ffffff';
+    
+    const textInput = document.getElementById('customTextColor');
+    if (textInput) textInput.value = rgbToHex(computedStyle.getPropertyValue('--text-color')) || '#212529';
+    
+    const borderInput = document.getElementById('customBorderColor');
+    if (borderInput) borderInput.value = rgbToHex(computedStyle.getPropertyValue('--border-color')) || '#dee2e6';
+    
+    const radiusInput = document.getElementById('customBorderRadius');
+    const radiusSpan = document.getElementById('borderRadiusValue');
+    if (radiusInput && radiusSpan) {
+        const borderRadius = computedStyle.getPropertyValue('--border-radius').replace('px', '');
+        radiusInput.value = parseInt(borderRadius) || 12;
+        radiusSpan.textContent = parseInt(borderRadius) || 12;
+    }
+    
     const fontSelect = document.getElementById('customFontFamily');
     if (fontSelect) {
+        const fontFamily = computedStyle.getPropertyValue('--font-family').replace(/'/g, '');
         for(let i = 0; i < fontSelect.options.length; i++) {
             if (fontSelect.options[i].value.replace(/'/g, '') === fontFamily) {
                 fontSelect.selectedIndex = i;
@@ -404,11 +551,17 @@ function loadCurrentThemeToForm() {
         }
     }
     
-    // Colores de fechas
-    document.getElementById('customVencidoColor').value = computedStyle.getPropertyValue('--danger-color') || '#dc3545';
-    document.getElementById('customUrgenteColor').value = computedStyle.getPropertyValue('--urgent-color') || '#ff6b6b';
-    document.getElementById('customProximoColor').value = computedStyle.getPropertyValue('--warning-color') || '#ffc107';
-    document.getElementById('customNormalColor').value = computedStyle.getPropertyValue('--success-color') || '#28a745';
+    const vencidoInput = document.getElementById('customVencidoColor');
+    if (vencidoInput) vencidoInput.value = rgbToHex(computedStyle.getPropertyValue('--danger-color')) || '#dc3545';
+    
+    const urgenteInput = document.getElementById('customUrgenteColor');
+    if (urgenteInput) urgenteInput.value = rgbToHex(computedStyle.getPropertyValue('--urgent-color')) || '#ff6b6b';
+    
+    const proximoInput = document.getElementById('customProximoColor');
+    if (proximoInput) proximoInput.value = rgbToHex(computedStyle.getPropertyValue('--warning-color')) || '#ffc107';
+    
+    const normalInput = document.getElementById('customNormalColor');
+    if (normalInput) normalInput.value = rgbToHex(computedStyle.getPropertyValue('--success-color')) || '#28a745';
 }
 
 function rgbToHex(rgb) {
